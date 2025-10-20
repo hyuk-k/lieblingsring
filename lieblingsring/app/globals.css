@@ -1,0 +1,144 @@
+:root {
+  --black:#000; --gray:#666; --border:#e5e7eb; --bg:#fff;
+  --headerH: 64px;                         /* ← 헤더 고정 높이 */
+}
+
+/* 공통 리셋 */
+*{box-sizing:border-box}
+html,body{padding:0;margin:0}
+html, body { overflow-x: hidden; }
+img, video { max-width:100%; height:auto; display:block }
+
+/* 헤더 */
+header{
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: #fff;
+  border-bottom:1px solid var(--border);
+  height: var(--headerH);                  /* ← 고정 높이 */
+}
+header .wrap{
+  height: var(--headerH);
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding: 0 16px;
+}
+header .wrap { flex-wrap: nowrap; }        /* ✅ 메뉴 줄바꿈 방지 */
+nav a { white-space: nowrap; }             /* ✅ 링크 줄바꿈 방지 */
+
+/* 홈 히어로: 헤더만큼 내려앉히기 */
+.home-hero {
+  position: relative;
+  height: 60vh;                /* 필요하면 50~55vh로 더 줄여도 됨 */
+  min-height: 420px;
+  margin-top: var(--headerH);  /* ← 겹침 방지 */
+  background:#000; color:#fff;
+  overflow: hidden;
+}
+.home-hero-bg {
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  object-fit: cover;            /* 비율 유지하며 꽉 채움 */
+  object-position: center 30%;
+  filter: brightness(.88);
+}
+.home-hero-overlay { position: relative; z-index:1; height:100%; display:grid; place-items:center; text-align:center; padding:16px; }
+
+/* 우상단 퀵버튼: 헤더 높이만큼 내려주기 */
+.quick-top-right {
+  position:absolute; right:12px; top: calc(12px + var(--headerH));
+  display:flex; gap:8px; z-index:2;
+}
+.quick-btn{
+  width:36px;height:36px;border-radius:8px;
+  border:1px solid rgba(255,255,255,.6);
+  background:rgba(0,0,0,.2); color:#fff; font-size:18px;
+}
+
+/* 우하단 SNS */
+.quick-sns { position:absolute; right:12px; bottom:12px; display:flex; gap:10px; z-index:2; }
+.kakao-dot,.insta-dot{ width:36px;height:36px;border-radius:50%;display:grid;place-items:center;font-weight:800; }
+.kakao-dot{ background:#FEE500;color:#111; }
+.insta-dot{ background:linear-gradient(45deg,#F58529,#FEDA77,#DD2A7B,#8134AF,#515BD4); color:#fff; }
+
+/* 기본 버튼/폼 몇 개 */
+.container{max-width:1040px;margin:0 auto;padding:0 16px}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:8px;border:1px solid transparent;transition:.2s;font-weight:600;cursor:pointer}
+.btn-primary{background:#000;color:#fff}
+.btn-outline{background:#fff;color:#000;border-color:#000}
+.input{width:100%;border:1px solid var(--border);padding:10px 12px;border-radius:8px}
+
+
+body{
+  font-family:system-ui,"Noto Sans KR",sans-serif;
+  color:#111; background:#fff; line-height:1.5
+}
+a{color:inherit;text-decoration:none}
+.container{max-width:1040px;margin:0 auto;padding:0 16px}
+.grid{display:grid}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:8px;border:1px solid transparent;transition:.2s;font-weight:600;cursor:pointer}
+.btn-primary{background:#000;color:#fff}
+.btn-outline{background:#fff;color:#000;border-color:#000}
+
+.input,.textarea,select{width:100%;border:1px solid var(--border);padding:10px 12px;border-radius:8px}
+.textarea{min-height:120px}
+nav a{padding:8px 10px;border-radius:6px}
+nav a:hover{background:#f5f5f5}
+
+header{border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:1000} /* ✅ 헤더 항상 위 */
+header .wrap{display:flex;align-items:center;gap:16px;justify-content:space-between;padding:10px 16px}
+
+footer{border-top:1px solid var(--border);padding:20px 16px;margin-top:40px;color:#555}
+
+@media (max-width: 768px){.hide-sm{display:none !important}.show-sm{display:flex !important}}
+@media (min-width: 769px){.hide-sm{display:flex !important}.show-sm{display:none !important}}
+header{position:sticky; top:0; z-index:1000; background:#fff}
+html,body{overflow-x:hidden}
+
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:2px solid #000; outline-offset:2px;
+}
+
+/* ===== SHOP GRID: 3 → 2 → 1 ===== */
+.shop-head h1 { font-size:28px; font-weight:700; margin:0 0 12px; }
+.tabs { display:flex; gap:8px; align-items:center; }
+.tab { padding:8px 12px; border:1px solid #e5e7eb; border-radius:8px; background:#fff; cursor:pointer; }
+.tab.is-active, .tab:hover { background:#000; color:#fff; border-color:#000; }
+.muted { color:#666; }
+
+.shop-grid {
+  display:grid; gap:24px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 1100px) { .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px)  { .shop-grid { grid-template-columns: 1fr; } }
+
+.card {
+  border:1px solid #e5e7eb; border-radius:10px; padding:12px; display:block; color:inherit;
+  transition:transform .15s ease, box-shadow .15s ease; background:#fff;
+}
+.card:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(0,0,0,.06); }
+.card-img { width:100%; aspect-ratio:3 / 4; object-fit:cover; border-radius:8px; background:#f7f7f7; }
+.card-name { margin:10px 0 4px; font-weight:600; font-size:16px; }
+.card-price { font-weight:700; }
+
+/* ===== Bias container: 가운데보다 '약간 왼쪽' 정렬 ===== */
+.bias-left {
+  display: grid;
+  grid-template-columns: 2fr minmax(0, 760px) 1fr; /* 왼쪽 여백을 더 두고 본문을 약간 왼쪽으로 */
+  gap: 0;
+}
+@media (max-width: 960px) {
+  .bias-left { grid-template-columns: 12px 1fr 12px; }
+}
+
+/* 검색/메뉴 오버레이 */
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; justify-content:center; align-items:center; z-index:1100; }
+.search-box { display:flex; gap:8px; background:#fff; padding:16px; border-radius:10px; width:min(520px,90%); }
+.search-box input { flex:1; border:1px solid #ddd; border-radius:8px; padding:10px 12px; }
+.search-box button { padding:10px 14px; border-radius:8px; border:1px solid #111; background:#111; color:#fff; }
+
+.drawer { width:min(360px,85%); height:100%; background:#fff; color:#111; position:fixed; right:0; top:0; padding:16px; display:flex; flex-direction:column; }
+.drawer-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.drawer-nav { display:grid; gap:10px; font-size:16px; }

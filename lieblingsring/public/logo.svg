@@ -1,0 +1,5 @@
+<svg width="240" height="32" viewBox="0 0 600 80" xmlns="http://www.w3.org/2000/svg" fill="none">
+  <path d="M40 20c10-20 40-20 50 0 8 16-4 30-25 48C44 50 32 36 40 20Z" stroke="white" stroke-width="8"/>
+  <rect x="0" y="0" width="600" height="80" fill="black"/>
+  <text x="80" y="55" fill="white" font-size="40" font-family="serif">LIEBLINGSRING</text>
+</svg>

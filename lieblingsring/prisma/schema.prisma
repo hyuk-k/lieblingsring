@@ -1,0 +1,97 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // shadowDatabaseUrl = env("SHADOW_DATABASE_URL") // 필요 시 사용
+}
+
+/* ===== Enums ===== */
+enum ProductStatus {
+  ACTIVE
+  SOLD_OUT
+  HIDDEN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELED
+  FAILED
+}
+
+/* ===== Models ===== */
+model Product {
+  id          String         @id @default(cuid())
+  name        String
+  summary     String?
+  price       Int
+  salePrice   Int?
+  images      String[]       @default([])   // ✅ Postgres 배열 사용
+  description String?
+  status      ProductStatus  @default(ACTIVE)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // 주문항목에서 productId로만 참조(실제 relation 필요 없으면 생략)
+  @@index([status, createdAt])
+}
+
+model Lookbook {
+  id        String   @id @default(cuid())
+  title     String
+  caption   String?
+  image     String                  // 대표 이미지 경로
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id            String       @id @default(cuid())
+  status        OrderStatus  @default(PENDING)
+  email         String
+  name          String
+  phone         String
+  addr1         String
+  addr2         String?
+  zipcode       String
+  totalAmount   Int
+  payMethod     String        // "NAVERPAY" | "TOSS" | "BANK" 등
+  payTxId       String?       // PG 결제키/거래ID
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  items         OrderItem[]
+
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  productId String
+  name      String
+  price     Int
+  qty       Int
+
+  Order     Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Inquiry {
+  id        String   @id @default(cuid())
+  name      String
+  contact   String
+  product   String?
+  sku       String?
+  type      String?
+  message   String
+  source    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

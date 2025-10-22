@@ -1,3 +1,4 @@
+require('dotenv').config();
 module.exports = {
   schema: "./prisma/schema.prisma",
   // seed: "ts-node --transpile-only prisma/seed.ts",

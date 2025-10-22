@@ -1,24 +1,49 @@
-import { NextResponse } from "next/server";
+// ./app/admin/orders/route.ts
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+// import { prisma } from "@/lib/db"; // DB 연동 시 주석 해제
 
-// ✅ 비동기 함수로 수정
-async function assertAdmin() {
-  const store = await cookies(); // Next 15에서 cookies()는 Promise
-  const isAdmin = store.get(process.env.ADMIN_COOKIE_NAME ?? "admin_session")?.value === "1";
-  if (!isAdmin) {
-    return NextResponse.json({ ok: false, message: "unauthorized" }, { status: 401 });
+const ADMIN_COOKIE_NAME = process.env.ADMIN_COOKIE_NAME ?? "admin_session";
+
+/**
+ * 관리자 여부 확인 (간단 boolean 반환)
+ * - 운영: 쿠키 값만으로 권한을 판단하지 말고 DB/세션 검증을 권장합니다.
+ */
+async function isAdminCookiePresent(req?: NextRequest): Promise<boolean> {
+  try {
+    // 서버 환경에 따라 cookies()가 sync/async일 수 있으므로, req 우선 사용
+    let cookieValue: string | null | undefined = null;
+
+    if (req) {
+      // NextRequest가 주어지면 req.cookies 사용 (명확한 경로)
+      cookieValue = req.cookies.get(ADMIN_COOKIE_NAME)?.value;
+    } else {
+      // req가 없을 때(호출 환경에 따라) next/headers cookies() 사용
+      // 일부 Next 버전에서는 cookies()가 sync. 사용 환경에 맞춰 조정하세요.
+      // const store = await cookies(); // 만약 Promise 반환되는 환경이면 await 사용
+      const store = cookies();
+      cookieValue = store.get(ADMIN_COOKIE_NAME)?.value;
+    }
+
+    // 간단 체크: 값이 "1" 인지 확인 (운영 시엔 더 강한 검증 필요)
+    return cookieValue === "1";
+  } catch (err) {
+    console.error("isAdminCookiePresent error:", err);
+    return false;
   }
-  return null;
 }
 
-export async function GET() {
-  const guard = await assertAdmin(); // ✅ await 필요
-  if (guard) return guard;
+export async function GET(req: NextRequest) {
+  // 권한 검사
+  const admin = await isAdminCookiePresent(req);
+  if (!admin) {
+    return NextResponse.json({ ok: false, message: "unauthorized" }, { status: 401 });
+  }
 
-  // ✅ (예시) 실제 Prisma에서 불러오려면 나중에 이렇게 수정할 수 있음:
-  // const items = await prisma.order.findMany({ orderBy: { createdAt: 'desc' } });
+  // 실제 DB에서 불러올 경우 예:
+  // const items = await prisma.order.findMany({ orderBy: { createdAt: "desc" } });
 
-  // 🔹 임시 목업 데이터
+  // 임시 목업 데이터
   const items = [
     {
       id: "ord_1",
@@ -38,5 +63,5 @@ export async function GET() {
     },
   ];
 
-  return NextResponse.json({ items });
+  return NextResponse.json({ ok: true, items });
 }

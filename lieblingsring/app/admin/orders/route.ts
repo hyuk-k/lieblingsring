@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-// 간단 보호막(미들웨어도 있지만 이중 안전장치)
-function assertAdmin() {
-  const isAdmin = cookies().get(process.env.ADMIN_COOKIE_NAME ?? "admin")?.value === "1";
+// ✅ 비동기 함수로 수정
+async function assertAdmin() {
+  const store = await cookies(); // Next 15에서 cookies()는 Promise
+  const isAdmin = store.get(process.env.ADMIN_COOKIE_NAME ?? "admin_session")?.value === "1";
   if (!isAdmin) {
     return NextResponse.json({ ok: false, message: "unauthorized" }, { status: 401 });
   }
@@ -11,11 +12,13 @@ function assertAdmin() {
 }
 
 export async function GET() {
-  const guard = assertAdmin();
+  const guard = await assertAdmin(); // ✅ await 필요
   if (guard) return guard;
 
-  // TODO: Prisma에서 실제 주문 가져오기
-  // 예시 목업 데이터
+  // ✅ (예시) 실제 Prisma에서 불러오려면 나중에 이렇게 수정할 수 있음:
+  // const items = await prisma.order.findMany({ orderBy: { createdAt: 'desc' } });
+
+  // 🔹 임시 목업 데이터
   const items = [
     {
       id: "ord_1",
@@ -37,4 +40,3 @@ export async function GET() {
 
   return NextResponse.json({ items });
 }
-

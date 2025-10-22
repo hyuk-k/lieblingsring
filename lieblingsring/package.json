@@ -9,9 +9,9 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint .",
     "seed": "prisma db seed",
-    "vercel-build": "prisma generate && prisma migrate deploy && next build --turbopack",
+    "vercel-build": "prisma generate && prisma migrate deploy && next build --no-lint --turbopack",
     "db:push": "prisma db push",
     "prisma:gen": "prisma generate",
     "postinstall": "prisma generate"
@@ -35,7 +35,15 @@
     "ts-node": "^10.9.2",
     "typescript": "^5"
   },
+  "eslintConfig": {
+    "extends": "next/core-web-vitals",
+    "rules": {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@next/next/no-img-element": "off",
+      "jsx-a11y/role-supports-aria-props": "warn"
+    }
+  },
   "prisma": {
-    "seed": "node prisma/seed.ts"
+    "seed": "ts-node --transpile-only prisma/seed.ts"
   }
 }

@@ -1,19 +1,34 @@
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
-  const item = await prisma.lookbook.findUnique({ where: { id: params.id } });
-  return NextResponse.json(item);
+/**
+ * ✅ Lookbook 단건 조회 (GET)
+ * /api/admin/lookbook/[id]
+ */
+export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params; // ✅ Promise 해제 (Next.js 15 대응)
+  const look = await prisma.lookbook.findUnique({ where: { id } });
+  return NextResponse.json(look);
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const body = await req.json();
-  const updated = await prisma.lookbook.update({ where: { id: params.id }, data: body });
+/**
+ * ✅ Lookbook 수정 (PUT)
+ */
+export async function PUT(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
+  const data = await req.json();
+  const updated = await prisma.lookbook.update({
+    where: { id },
+    data,
+  });
   return NextResponse.json(updated);
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  await prisma.lookbook.delete({ where: { id: params.id } });
+/**
+ * ✅ Lookbook 삭제 (DELETE)
+ */
+export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id } = await context.params;
+  await prisma.lookbook.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }
-

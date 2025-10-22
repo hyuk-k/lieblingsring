@@ -2,9 +2,7 @@
   "name": "lieblingsring",
   "version": "0.1.0",
   "private": true,
-  "engines": {
-    "node": ">=18.18 <23"
-  },
+  "engines": { "node": ">=18.18 <23" },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
@@ -17,7 +15,7 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "@prisma/client": "^6.15.0",
+    "@prisma/client": "^6.17.1",
     "next": "15.5.2",
     "nodemailer": "^7.0.6",
     "react": "19.1.0",
@@ -31,7 +29,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.2",
-    "prisma": "^6.15.0",
+    "prisma": "^6.17.1",
     "ts-node": "^10.9.2",
     "typescript": "^5"
   },
@@ -42,8 +40,5 @@
       "@next/next/no-img-element": "off",
       "jsx-a11y/role-supports-aria-props": "warn"
     }
-  },
-  "prisma": {
-    "seed": "ts-node --transpile-only prisma/seed.ts"
   }
 }

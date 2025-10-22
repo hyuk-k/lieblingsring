@@ -1,34 +1,37 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import type { Product } from "@prisma/client";
 
 /** images가 배열/JSON 문자열/단일 문자열 모두 대응 */
-function getFirstImage(product: any): string {
-  // 1) product.images 가 배열인 경우
-  if (Array.isArray(product?.images)) {
-    const v = product.images.find((x: unknown) => typeof x === "string") as string | undefined;
+function getFirstImage(images: unknown): string {
+  // 1️⃣ 배열일때
+  if (Array.isArray(images)) {
+    const v = images.find((x) => typeof x === "string") as string | undefined;
     if (v && v.trim()) return v.trim();
   }
-  // 2) product.imagesJson 이 JSON 문자열인 경우
-  if (typeof product?.imagesJson === "string") {
+
+  // 2️⃣ JSON 문자열일 때
+  if (typeof images === "string") {
     try {
-      const arr = JSON.parse(product.imagesJson);
-      if (Array.isArray(arr)) {
-        const v = arr.find((x: unknown) => typeof x === "string") as string | undefined;
+      const parsed = JSON.parse(images);
+      if (Array.isArray(parsed)) {
+        const v = parsed.find((x) => typeof x === "string") as string | undefined;
         if (v && v.trim()) return v.trim();
       }
-    } catch {}
+    } catch {
+      // 단일 문자열일 경우 그대로 리턴
+      if (images.trim()) return images.trim();
+    }
   }
-  // 3) product.images 가 단일 문자열인 경우
-  if (typeof product?.images === "string" && product.images.trim()) {
-    return product.images.trim();
-  }
-  // 4) 최종 폴백
+
+  // 3️⃣ 플백 이미지
   return "/placeholder.jpg";
 }
 
-const formatKRW = (n: number) => {
+/** 숫자를 $로 표시 포맷 */
+const formatKRW = (n: number): string => {
   try {
     return n.toLocaleString("ko-KR");
   } catch {
@@ -36,43 +39,74 @@ const formatKRW = (n: number) => {
   }
 };
 
-export default function ProductCard({ product }: { product: Product }) {
-  const imgSrc = getFirstImage(product as any);
+type ProductCardProps = {
+  product: Product & { images?: string[] | string | null; slug?: string };
+};
+
+export default function ProductCard({ product }: ProductCardProps) {
+  const imgSrc = getFirstImage(product.images);
   const isOnSale = typeof product.salePrice === "number" && product.salePrice > 0;
   const displayPrice = isOnSale ? product.salePrice! : product.price;
 
   return (
     <div className="card" style={{ overflow: "hidden" }}>
-      <Link href={`/products/${product.slug}`} aria-label={`${product.name} 상세보기`}>
+      <Link
+        href={`/products/${product.slug ?? ""}`}
+        aria-label={`${product.name} 상세보기`}
+      >
         <div style={{ width: "100%", aspectRatio: "3 / 4", overflow: "hidden" }}>
-          <img
+          <Image
             src={imgSrc}
             alt={`${product.name} 이미지`}
-            loading="lazy"
-            decoding="async"
-            className="card-img hover:scale-105"
-            onError={(e: any) => {
-              // 이미지 깨질 경우 플레이스홀더로 대체
-              if (e?.currentTarget) e.currentTarget.src = "/placeholder.jpg";
+            width={600}
+            height={800}
+            sizes="(max-width: 768px) 100vw, 33vw"
+            priority={false}
+            placeholder="empty"
+            style={{
+              width: "100%",
+              height: "auto",
+              objectFit: "cover",
+              transition: "transform .3s ease",
+            }}
+            onError={(e) => {
+              const target = e.currentTarget as HTMLImageElement;
+              target.src = "/placeholder.jpg";
             }}
           />
         </div>
 
         <div style={{ padding: 12 }}>
-          <h3 className="card-name">{product.name}</h3>
+          <h3
+            className="card-name"
+            style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}
+          >
+            {product.name}
+          </h3>
 
           {/* 가격 영역 */}
           {isOnSale ? (
             <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-              <span className="card-price" style={{ color: "#dc2626" }}>
+              <span
+                className="card-price"
+                style={{ color: "#dc2626", fontWeight: 700 }}
+              >
                 {formatKRW(displayPrice)}원
               </span>
-              <span style={{ color: "#9ca3af", textDecoration: "line-through", fontSize: 13 }}>
+              <span
+                style={{
+                  color: "#9ca3af",
+                  textDecoration: "line-through",
+                  fontSize: 13,
+                }}
+              >
                 {formatKRW(product.price)}원
               </span>
             </div>
           ) : (
-            <div className="card-price">{formatKRW(displayPrice)}원</div>
+            <div className="card-price" style={{ fontWeight: 700 }}>
+              {formatKRW(displayPrice)}원
+            </div>
           )}
         </div>
       </Link>

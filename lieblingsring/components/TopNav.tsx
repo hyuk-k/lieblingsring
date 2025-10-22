@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 type MeResponse = { user: null | { name?: string; email?: string } };
 
@@ -91,7 +92,7 @@ export default function TopNav() {
           {USE_TEXT_LOGO ? (
             <strong style={{ letterSpacing: 2 }}>LIEBLINGSRING</strong>
           ) : (
-            <img src="/logo.svg" alt="LIEBLINGSRING" style={{ height: 28, display: "block" }} />
+            <Image src="/logo.svg" alt="LIEBLINGSRING" style={{ height: 28, display: "block" }} />
           )}
         </Link>
 

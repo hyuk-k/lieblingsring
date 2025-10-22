@@ -12,7 +12,7 @@
     "vercel-build": "prisma generate && prisma migrate deploy && next build --no-lint --turbopack",
     "db:push": "prisma db push",
     "prisma:gen": "prisma generate",
-    "postinstall": "prisma generate"
+    "postinstall": "node ./scripts/postinstall-prisma.js"
   },
   "dependencies": {
     "@prisma/client": "^6.17.1",

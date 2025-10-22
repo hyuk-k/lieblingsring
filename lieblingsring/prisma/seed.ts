@@ -49,6 +49,7 @@ async function main() {
       name: "SILVER 가지방석 열쇠 목걸이",
       price: 129000,
       salePrice: null,
+      summary: null,
       images: [
         "/model-black-slip-key-necklace-front-smile-hands-together.jpg",
         "/model-black-slip-key-necklace-front-crossed-arms.jpg",
@@ -58,55 +59,70 @@ async function main() {
       name: "알루미늄 반려동물 인식표",
       price: 5900,
       salePrice: null,
+      summary: null,
       images: ["/mirror-smile-earring-necklace-closeup.jpg"],
     },
     {
       name: "전통매듭 꽃다발 브로치",
       price: 23000,
       salePrice: null,
+      summary: null,
       images: ["/model-black-blouse-holding-earring-vintage-wall.jpg"],
     },
     {
       name: "색동 휴대폰 스트랩",
       price: 7900,
       salePrice: null,
+      summary: null,
       images: ["/earring-stud-closeup-right-ear.jpg"],
     },
     {
       name: "쏘맥 수세미 세트(소주+맥주)",
       price: 15000,
       salePrice: null,
+      summary: null,
       images: ["/model-black-slip-sitting-bed-smile-wide.jpg"],
     },
     {
       name: "김장 수세미 세트 (배추+당근+무)",
       price: 15000,
       salePrice: null,
+      summary: null,
       images: ["/model-black-dress-stand-smile-vintage-hangers.jpg"],
     },
   ];
 
   for (const it of items) {
-    await prisma.product.upsert({
-      where: { slug: slugify(it.name) },
-      update: {
-        price: it.price,
-        salePrice: it.salePrice ?? null,
-        summary: it.summary ?? null,
-        // Json 컬럼은 그대로 배열 쓰면 됩니다.
-        images: it.images,
-        status: "ACTIVE",
-      },
-      create: {
-        name: it.name,
-        slug: slugify(it.name),
-        price: it.price,
-        salePrice: it.salePrice ?? null,
-        summary: it.summary ?? null,
-        images: it.images,
-        status: "ACTIVE",
-      },
-    });
+    const slug = slugify(it.name);
+
+    try {
+      await prisma.product.upsert({
+        where: { slug },
+        update: {
+          price: it.price,
+          salePrice: it.salePrice ?? null,
+          summary: it.summary ?? null,
+          images: it.images,
+          status: "ACTIVE",
+          updatedAt: new Date(),
+        },
+        create: {
+          name: it.name,
+          slug,
+          price: it.price,
+          salePrice: it.salePrice ?? null,
+          summary: it.summary ?? null,
+          images: it.images,
+          status: "ACTIVE",
+        },
+      });
+
+      console.log(`✔ Product upserted: ${it.name} (slug: ${slug})`);
+    } catch (e: any) {
+      // 에러가 나면 로깅하고 다음 항목으로 진행
+      console.error(`✖ Failed to upsert product: ${it.name} (slug: ${slug})`);
+      console.error(e);
+    }
   }
 }
 
@@ -116,6 +132,7 @@ main()
     await prisma.$disconnect();
   })
   .catch(async (e) => {
+    console.error("Fatal seed error:");
     console.error(e);
     await prisma.$disconnect();
     process.exit(1);

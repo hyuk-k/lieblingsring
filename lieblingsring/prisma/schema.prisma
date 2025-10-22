@@ -1,4 +1,3 @@
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,7 +8,9 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-/* ===== Enums ===== */
+/**
+ * ===== Enums =====
+ */
 enum ProductStatus {
   ACTIVE
   SOLD_OUT
@@ -23,61 +24,135 @@ enum OrderStatus {
   FAILED
 }
 
-/* ===== Models ===== */
+enum CouponType {
+  PERCENT
+  AMOUNT
+}
+
+/**
+ * ===== Models =====
+ */
 model Product {
-  id          String         @id @default(cuid())
+  id          String        @id @default(cuid())
   name        String
+  slug        String        @unique
   summary     String?
   price       Int
   salePrice   Int?
-  images      String[]       @default([])   // ✅ Postgres 배열 사용
+  images      String[]      @default([]) // Postgres text[] 사용
   description String?
-  status      ProductStatus  @default(ACTIVE)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  status      ProductStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
-  // 주문항목에서 productId로만 참조(실제 relation 필요 없으면 생략)
+  // Relations
+
+  productImages ProductImage[] // 
+  variants      ProductVariant[]
+  categories    ProductCategory[] // M:N via join table model below
+  reviews       Review[]
+
   @@index([status, createdAt])
+  @@index([slug])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  src       String
+  alt       String?
+  order     Int     @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model ProductVariant {
+  id        String   @id @default(cuid())
+  productId String
+  title     String? // ex. "골드 + M 사이즈"
+  sku       String?  @unique
+  price     Int? // variant별 가격 오버라이드
+  stock     Int?     @default(0)
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  parentId  String?
+  createdAt DateTime @default(now())
+
+  children Category[] @relation("CategoryChildren")
+  parent   Category?  @relation("CategoryChildren", fields: [parentId], references: [id])
+
+  products ProductCategory[]
+}
+
+model ProductCategory {
+  id         String @id @default(cuid())
+  productId  String
+  categoryId String
+
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, categoryId])
+  @@index([categoryId])
+  @@index([productId])
 }
 
 model Lookbook {
   id        String   @id @default(cuid())
   title     String
   caption   String?
-  image     String                  // 대표 이미지 경로
+  image     String // 대표 이미지 경로
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Order {
-  id            String       @id @default(cuid())
-  status        OrderStatus  @default(PENDING)
-  email         String
-  name          String
-  phone         String
-  addr1         String
-  addr2         String?
-  zipcode       String
-  totalAmount   Int
-  payMethod     String        // "NAVERPAY" | "TOSS" | "BANK" 등
-  payTxId       String?       // PG 결제키/거래ID
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id          String      @id @default(cuid())
+  status      OrderStatus @default(PENDING)
+  email       String
+  name        String
+  phone       String
+  addr1       String
+  addr2       String?
+  zipcode     String
+  totalAmount Int
+  payMethod   String // "NAVERPAY" | "TOSS" | "BANK" 등
+  payTxId     String? // PG 결제키/거래ID
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  customerId  String? // optional: 주문에 고객이 연결되지 않을 수 있으면 nullable
+  customer    Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
-  items         OrderItem[]
+  items   OrderItem[]
+  payment Payment?
 
   @@index([status, createdAt])
 }
 
 model OrderItem {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   orderId   String
   productId String
+  variantId String? // 선택한 variant가 있으면 저장
   name      String
   price     Int
   qty       Int
 
-  Order     Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  Order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  // product relation omitted for denormalization; 필요시 추가 가능
 
   @@index([orderId])
   @@index([productId])
@@ -92,6 +167,142 @@ model Inquiry {
   type      String?
   message   String
   source    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/**
+ * ===== Customer / Cart / Payment / Review =====
+ */
+
+model Customer {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  addresses Address[]
+  carts     Cart[]
+  orders    Order[]
+  reviews   Review[]
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  customerId String
+  label      String? // 예: "자택", "회사"
+  name       String?
+  phone      String?
+  addr1      String
+  addr2      String?
+  zipcode    String
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+model Cart {
+  id         String   @id @default(cuid())
+  customerId String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  items    CartItem[]
+  customer Customer?  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+}
+
+model CartItem {
+  id        String  @id @default(cuid())
+  cartId    String
+  productId String
+  variantId String?
+  name      String
+  price     Int
+  qty       Int
+
+  cart Cart @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  @@index([cartId])
+  @@index([productId])
+}
+
+/**
+ * 결제 기록
+ */
+model Payment {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  provider  String // "NAVERPAY", "TOSS", "STRIPE" 등
+  amount    Int
+  currency  String   @default("KRW")
+  status    String
+  txId      String?
+  raw       Json? // PG로부터 받은 전체 응답 저장(선택)
+  createdAt DateTime @default(now())
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+/**
+ * 리뷰
+ */
+model Review {
+  id         String   @id @default(cuid())
+  productId  String
+  customerId String?
+  rating     Int // 1~5
+  title      String?
+  content    String?
+  createdAt  DateTime @default(now())
+
+  product  Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+}
+
+/**
+ * 쿠폰 / 마케팅
+ */
+model Coupon {
+  id        String     @id @default(cuid())
+  code      String     @unique
+  type      CouponType
+  value     Int // 금액(원) 또는 비율(%) — type에 따라 해석
+  minAmount Int? // 사용 조건 최소 결제액
+  maxUses   Int? // 총 사용 횟수 제한
+  usedCount Int        @default(0)
+  validFrom DateTime?
+  validTo   DateTime?
+  createdAt DateTime   @default(now())
+}
+
+/**
+ * 사이트 설정 / 법정 고지 등
+ */
+model SiteSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/**
+ * 관리자(옵션)
+ */
+model AdminUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("admin")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

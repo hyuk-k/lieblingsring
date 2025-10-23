@@ -1,72 +1,59 @@
 // ./app/api/auth/signup/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcrypt";
-import { usersStore } from "../../_store/users";
+import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/db";
 
-const SALT_ROUNDS = 10; // 필요시 환경변수로 관리
+/**
+ * 회원가입 엔드포인트
+ * - 요청 바디 검증
+ * - 이메일(또는 id) 중복 체크
+ * - 비밀번호 해시화(bcryptjs)
+ * - 사용자 생성(Prisma)
+ * - 일관된 JSON 응답
+ */
 
-type SignupPayload = {
-  email?: unknown;
-  password?: unknown;
-  name?: unknown;
-  phone?: unknown;
-};
-
-function isString(v: unknown): v is string {
-  return typeof v === "string";
-}
-
-function validateEmail(email: string) {
-  // 간단한 이메일 정규식 (필요시 더 엄격하게 교체)
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
+const SALT_ROUNDS = 10;
 
 export async function POST(req: NextRequest) {
   try {
-    const body: unknown = await req.json().catch(() => ({}));
-    const payload = body as SignupPayload;
+    const body = await req.json().catch(() => ({}));
+    const email = typeof (body as any).email === "string" ? (body as any).email.trim() : "";
+    const password = typeof (body as any).password === "string" ? (body as any).password : "";
+    const name = typeof (body as any).name === "string" ? (body as any).name.trim() : "";
 
-    // 필수 필드 검증
-    if (!isString(payload.email) || !isString(payload.password)) {
-      return NextResponse.json({ message: "이메일과 비밀번호는 필수입니다." }, { status: 400 });
+    // 기본 검증
+    if (!email || !password) {
+      return NextResponse.json({ ok: false, message: "이메일과 비밀번호는 필수입니다." }, { status: 400 });
+    }
+    if (password.length < 6) {
+      return NextResponse.json({ ok: false, message: "비밀번호는 최소 6자 이상이어야 합니다." }, { status: 400 });
     }
 
-    const email = payload.email.trim();
-    const password = payload.password;
-
-    if (!validateEmail(email)) {
-      return NextResponse.json({ message: "유효한 이메일을 입력해 주세요." }, { status: 400 });
+    // 이메일 중복 체크 (필요에 따라 유효성 검사 강화)
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      return NextResponse.json({ ok: false, message: "이미 사용 중인 이메일입니다." }, { status: 409 });
     }
 
-    if (password.length < 8) {
-      return NextResponse.json({ message: "비밀번호는 최소 8자 이상이어야 합니다." }, { status: 400 });
-    }
-
-    // 중복 검사
-    const exists = usersStore.users.some((u) => u.email === email);
-    if (exists) {
-      return NextResponse.json({ message: "이미 존재하는 이메일입니다." }, { status: 409 });
-    }
-
-    // 비밀번호 해시화
+    // 비밀번호 해시 (동기/비동기 선택 가능; 여기서는 비동기 사용)
     const hashed = await bcrypt.hash(password, SALT_ROUNDS);
 
-    // 사용자 추가 (비밀번호는 해시 저장)
-    const newUser = {
-      id: String(Date.now()),
-      email,
-      password: hashed,
-      name: isString(payload.name) ? payload.name : undefined,
-      phone: isString(payload.phone) ? payload.phone : undefined,
-      createdAt: new Date().toISOString(),
-    };
+    // 사용자 생성 (필요한 필드만 명시적으로 작성)
+    const created = await prisma.user.create({
+      data: {
+        email,
+        password: hashed,
+        name: name || null,
+        // 필요한 추가 필드가 있으면 명시적으로 추가하세요
+      },
+    });
 
-    usersStore.users.push(newUser);
+    // 민감정보 제거 후 반환
+    const { password: _p, ...safeUser } = created as any;
 
-    // 응답: 민감정보(비밀번호 등) 반환 금지
-    return NextResponse.json({ ok: true, id: newUser.id }, { status: 201 });
+    return NextResponse.json({ ok: true, data: safeUser }, { status: 201 });
   } catch (err) {
-    console.error("signup error:", err);
-    return NextResponse.json({ message: "서버 오류로 회원가입에 실패했습니다." }, { status: 500 });
+    console.error("POST /api/auth/signup error:", err);
+    return NextResponse.json({ ok: false, message: "서버 오류" }, { status: 500 });
   }
 }

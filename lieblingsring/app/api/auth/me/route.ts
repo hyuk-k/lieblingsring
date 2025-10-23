@@ -1,27 +1,24 @@
 // app/api/auth/me/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getTokenFromRequest, verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { verifyToken } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
   try {
-    const token = getTokenFromRequest(req);
-    if (!token) return NextResponse.json({ user: null }, { status: 200 });
+    const cookieName = process.env.COOKIE_NAME ?? "auth_token";
+    const token = req.cookies.get(cookieName)?.value;
+    if (!token) return NextResponse.json({ ok: false, data: null });
 
-    const payload = verifyToken(token);
-    if (!payload || !payload.sub) return NextResponse.json({ user: null }, { status: 200 });
+    const payload = await verifyToken(token);
+    if (!payload || !payload.sub) return NextResponse.json({ ok: false, data: null });
 
-    // 권장: 토큰 페이로드만 쓰지 말고 DB에서 최신 사용자 정보 조회
-    const user = await prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: { id: true, email: true, name: true }, // 민감정보 제외
-    });
+    const user = await prisma.customer.findUnique({ where: { id: payload.sub as string } });
+    if (!user) return NextResponse.json({ ok: false, data: null });
 
-    if (!user) return NextResponse.json({ user: null }, { status: 200 });
-
-    return NextResponse.json({ user }, { status: 200 });
+    const { password: _p, ...safe } = user as any;
+    return NextResponse.json({ ok: true, data: safe });
   } catch (err) {
-    console.error("auth me error:", err);
-    return NextResponse.json({ user: null }, { status: 200 });
+    console.error("GET /api/auth/me error:", err);
+    return NextResponse.json({ ok: false, message: "서버 오류" }, { status: 500 });
   }
 }

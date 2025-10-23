@@ -1,3 +1,4 @@
+// app/api/checkout/start/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
@@ -53,72 +54,108 @@ function isForm(obj: unknown): obj is CheckoutForm {
 
 export async function POST(req: NextRequest) {
   try {
-    const body: unknown = await req.json();
-
-    // 기본 구조 검증
-    if (typeof body !== "object" || body === null) {
-      return NextResponse.json({ message: "잘못된 요청 형식입니다." }, { status: 400 });
+    const body: unknown = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ ok: false, message: "잘못된 요청 형식입니다." }, { status: 400 });
     }
 
     const payload = body as Partial<CheckoutPayload>;
 
-    // 필수 필드 검사
+    // 구조 검증
     if (!payload.cart || !isCart(payload.cart)) {
-      return NextResponse.json({ message: "장바구니 정보가 유효하지 않습니다." }, { status: 400 });
+      return NextResponse.json({ ok: false, message: "장바구니 정보가 유효하지 않습니다." }, { status: 400 });
     }
     if (!payload.form || !isForm(payload.form)) {
-      return NextResponse.json({ message: "주문자 이메일 등 폼 정보가 유효하지 않습니다." }, { status: 400 });
+      return NextResponse.json({ ok: false, message: "주문자 이메일 등 폼 정보가 유효하지 않습니다." }, { status: 400 });
     }
     if (!payload.method || typeof payload.method !== "string") {
-      return NextResponse.json({ message: "결제 수단이 지정되지 않았습니다." }, { status: 400 });
+      return NextResponse.json({ ok: false, message: "결제 수단이 지정되지 않았습니다." }, { status: 400 });
     }
 
     const cart = payload.cart;
     if (!cart.items.length) {
-      return NextResponse.json({ message: "장바구니가 비어있습니다." }, { status: 400 });
+      return NextResponse.json({ ok: false, message: "장바구니가 비어있습니다." }, { status: 400 });
     }
 
-    // 총합 계산(타입 안전)
-    const total = cart.items.reduce((s, it) => s + it.price * it.qty, 0);
+    // 필수 폼 필드(스키마 기준)
+    const form = payload.form;
+    const email = form.email.trim();
+    const name = typeof form.name === "string" && form.name.trim().length > 0 ? form.name.trim() : null;
+    const phone = typeof form.phone === "string" && form.phone.trim().length > 0 ? form.phone.trim() : null;
+    const zipcode = typeof form.zipcode === "string" && form.zipcode.trim().length > 0 ? form.zipcode.trim() : null;
+    const addr1 = typeof form.addr1 === "string" && form.addr1.trim().length > 0 ? form.addr1.trim() : null;
+    const addr2 = typeof form.addr2 === "string" ? form.addr2.trim() : null;
 
-    // 권장: 주문 생성 등 DB 작업은 트랜잭션으로 묶는 것이 안전합니다.
-    // prisma.$transaction을 사용해 관련 작업을 묶을 것을 권장합니다.
-    const order = await prisma.order.create({
-      data: {
-        email: payload.form.email,
-        name: payload.form.name ?? null,
-        phone: payload.form.phone ?? null,
-        zipcode: payload.form.zipcode ?? null,
-        addr1: payload.form.addr1 ?? null,
-        addr2: payload.form.addr2 ?? null,
-        totalAmount: total,
-        payMethod: payload.method,
-        items: {
-          create: cart.items.map((it) => ({
-            productId: it.id,
-            name: it.name,
-            price: it.price,
-            qty: it.qty,
-          })),
+    // schema에서 required인 필드는 서버에서 보장해야 함
+    if (!name || !phone || !zipcode) {
+      return NextResponse.json({ ok: false, message: "이름/전화번호/우편번호는 필수입니다." }, { status: 400 });
+    }
+
+    // 총합 계산
+    const total = cart.items.reduce((s, it) => s + it.price * it.qty, 0);
+    if (total <= 0) {
+      return NextResponse.json({ ok: false, message: "총 주문 금액이 유효하지 않습니다." }, { status: 400 });
+    }
+
+    // 상품 존재 및 가격 검증 (선택적 강검증)
+    const productIds = [...new Set(cart.items.map((i) => i.id))];
+    const products = await prisma.product.findMany({ where: { id: { in: productIds } } });
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
+    for (const it of cart.items) {
+      const p = productMap.get(it.id);
+      if (!p) {
+        return NextResponse.json({ ok: false, message: `상품(${it.name})을 찾을 수 없습니다.` }, { status: 400 });
+      }
+      if (typeof p.price === "number" && p.price !== it.price) {
+        return NextResponse.json({ ok: false, message: `상품(${it.name}) 가격이 변경되었습니다. 다시 시도하세요.` }, { status: 400 });
+      }
+    }
+
+    // payMethod를 확실히 string으로 할당
+    const method: string = String(payload.method);
+
+    // DB 트랜잭션으로 주문과 주문아이템 생성
+    const createdOrder = await prisma.$transaction(async (tx) => {
+      const ord = await tx.order.create({
+        data: {
+          email,
+          name,
+          phone,
+          addr1: addr1 ?? "",
+          addr2: addr2 ?? "",
+          zipcode,
+          totalAmount: total,
+          payMethod: method,
+          items: {
+            create: cart.items.map((it) => ({
+              productId: it.id,
+              name: it.name,
+              price: it.price,
+              qty: it.qty,
+            })),
+          },
         },
-      },
+      });
+
+      // 필요 시 재고 감소나 통계 처리 추가
+
+      return ord;
     });
 
-    // 2) PG 결제 준비(네이버페이/토스) — 실제 연동 시 서버측 시크릿/인증 처리 필요
-    let redirectUrl: string | undefined;
-
-    if (payload.method === "NAVERPAY") {
-      // TODO: 실제 네이버페이 결제준비 API 호출 및 응답에서 리다이렉트 URL 획득
-      redirectUrl = `/order/${order.id}?mock=naverpay`;
-    } else if (payload.method === "TOSS") {
-      // TODO: Toss Payments 호출 또는 결제키 생성 후 checkout URL 반환
-      redirectUrl = `/order/${order.id}?mock=toss`;
+    // PG 연동(플레이스홀더)
+    let redirectUrl: string | null = null;
+    if (method === "NAVERPAY") {
+      redirectUrl = `/order/${createdOrder.id}?mock=naverpay`;
+    } else if (method === "TOSS") {
+      redirectUrl = `/order/${createdOrder.id}?mock=toss`;
+    } else {
+      redirectUrl = `/order/${createdOrder.id}`;
     }
 
-    return NextResponse.json({ orderId: order.id, redirectUrl }, { status: 201 });
+    return NextResponse.json({ ok: true, orderId: createdOrder.id, redirectUrl }, { status: 201 });
   } catch (err) {
     console.error("checkout start error:", err);
-    // 내부 에러 메시지를 그대로 노출하지 않음
-    return NextResponse.json({ message: "결제 시작 중 서버 오류가 발생했습니다." }, { status: 500 });
+    return NextResponse.json({ ok: false, message: "결제 시작 중 서버 오류가 발생했습니다." }, { status: 500 });
   }
 }

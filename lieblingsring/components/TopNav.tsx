@@ -1,3 +1,4 @@
+// app/components/TopNav.tsx
 "use client";
 
 import Link from "next/link";
@@ -11,7 +12,8 @@ type MeResponse = { user: null | { name?: string; email?: string } };
 const USE_TEXT_LOGO = false;
 
 export default function TopNav() {
-  const pathname = usePathname();
+  const pathnameRaw = usePathname();
+  const pathname = pathnameRaw ?? "/";
   const router = useRouter();
 
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -20,6 +22,7 @@ export default function TopNav() {
   const [me, setMe] = useState<MeResponse["user"]>(null);
 
   useEffect(() => {
+    // 경로가 바뀌면 메뉴/검색 닫기
     setMobileOpen(false);
     setSearchOpen(false);
   }, [pathname]);
@@ -46,12 +49,22 @@ export default function TopNav() {
   const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-    } catch {}
-    window.location.reload();
+    } catch {
+      // ignore
+    }
+    if (typeof window !== "undefined") window.location.reload();
   };
 
+  // NavLink 컴포넌트: 파일 내부에서만 사용
   const NavLink = ({ href, label }: { href: string; label: string }) => {
-    const active = pathname === href || (href !== "/" && pathname.startsWith(href));
+    const path = pathname;
+    // 활성 판별: 정확 일치 또는 하위 경로 (루트 특수 처리)
+    const normalizedHref = href === "/" ? "/" : href.replace(/\/$/, "");
+    const normalizedPath = path === "/" ? "/" : path.replace(/\/$/, "");
+    const active =
+      normalizedPath === normalizedHref ||
+      (normalizedHref !== "/" && (normalizedPath === normalizedHref || normalizedPath.startsWith(normalizedHref + "/")));
+
     return (
       <Link
         href={href}
@@ -80,7 +93,7 @@ export default function TopNav() {
           gap: 16,
           padding: "10px 16px",
           flexWrap: "nowrap",
-          minWidth: 0, // 🔸오버플로우 방지
+          minWidth: 0, // 오버플로우 방지
         }}
       >
         {/* 로고 */}
@@ -92,7 +105,8 @@ export default function TopNav() {
           {USE_TEXT_LOGO ? (
             <strong style={{ letterSpacing: 2 }}>LIEBLINGSRING</strong>
           ) : (
-            <Image src="/logo.svg" alt="LIEBLINGSRING" style={{ height: 28, display: "block" }} />
+            // SVG 파일이면 width/height를 적절히 조절하세요
+            <Image src="/logo.svg" alt="LIEBLINGSRING" width={140} height={28} style={{ display: "block" }} />
           )}
         </Link>
 
@@ -112,7 +126,13 @@ export default function TopNav() {
           {me ? (
             <>
               <NavLink href="/account" label="mypage" />
-              <button type="button" className="btn btn-outline" onClick={handleLogout} aria-label="logout" style={{ whiteSpace: "nowrap" }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={handleLogout}
+                aria-label="로그아웃"
+                style={{ whiteSpace: "nowrap" }}
+              >
                 logout
               </button>
             </>
@@ -126,7 +146,7 @@ export default function TopNav() {
           <button
             type="button"
             className="btn btn-outline"
-            aria-label="검색"
+            aria-label="검색 열기"
             onClick={() => setSearchOpen((v) => !v)}
           >
             🔍
@@ -139,12 +159,17 @@ export default function TopNav() {
           </a>
         </nav>
 
-        {/* 모바일 버튼 */}
+        {/* 모바일 버튼 (보이기/숨기기 CSS로 제어) */}
         <div className="show-sm" style={{ display: "none", alignItems: "center", gap: 8 }}>
-          <button type="button" className="btn btn-outline" aria-label="검색" onClick={() => setSearchOpen((v) => !v)}>
+          <button
+            type="button"
+            className="btn btn-outline"
+            aria-label="검색 열기"
+            onClick={() => setSearchOpen((v) => !v)}
+          >
             🔍
           </button>
-          <button type="button" className="btn btn-outline" aria-label="메뉴" onClick={() => setMobileOpen(true)}>
+          <button type="button" className="btn btn-outline" aria-label="메뉴 열기" onClick={() => setMobileOpen(true)}>
             ☰
           </button>
         </div>
@@ -153,7 +178,12 @@ export default function TopNav() {
       {/* 검색 확장 */}
       {searchOpen && (
         <div className="container" style={{ paddingBottom: 12 }}>
-          <form onSubmit={goSearch} style={{ display: "flex", gap: 8, maxWidth: 600 }} role="search" aria-label="상품 검색">
+          <form
+            onSubmit={goSearch}
+            style={{ display: "flex", gap: 8, maxWidth: 600 }}
+            role="search"
+            aria-label="상품 검색"
+          >
             <input
               className="input"
               placeholder="상품명으로 검색"
@@ -161,8 +191,12 @@ export default function TopNav() {
               onChange={(e) => setQ(e.target.value)}
               aria-label="검색어"
             />
-            <button className="btn btn-primary" type="submit">검색</button>
-            <button type="button" className="btn btn-outline" onClick={() => setSearchOpen(false)}>닫기</button>
+            <button className="btn btn-primary" type="submit">
+              검색
+            </button>
+            <button type="button" className="btn btn-outline" onClick={() => setSearchOpen(false)}>
+              닫기
+            </button>
           </form>
         </div>
       )}
@@ -172,16 +206,34 @@ export default function TopNav() {
         <div
           role="dialog"
           aria-label="모바일 메뉴"
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", display: "flex", justifyContent: "flex-end", zIndex: 1001 }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,.35)",
+            display: "flex",
+            justifyContent: "flex-end",
+            zIndex: 1001,
+          }}
           onClick={() => setMobileOpen(false)}
         >
           <div
-            style={{ width: "80%", maxWidth: 320, background: "#fff", height: "100%", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}
+            style={{
+              width: "80%",
+              maxWidth: 320,
+              background: "#fff",
+              height: "100%",
+              padding: 16,
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
               <strong>메뉴</strong>
-              <button type="button" className="btn btn-outline" onClick={() => setMobileOpen(false)}>닫기</button>
+              <button type="button" className="btn btn-outline" onClick={() => setMobileOpen(false)}>
+                닫기
+              </button>
             </div>
 
             <nav style={{ display: "grid", gap: 8 }}>
@@ -195,7 +247,9 @@ export default function TopNav() {
               {me ? (
                 <>
                   <NavLink href="/account" label="mypage" />
-                  <button type="button" className="btn btn-outline" onClick={handleLogout} aria-label="logout">logout</button>
+                  <button type="button" className="btn btn-outline" onClick={handleLogout} aria-label="logout">
+                    logout
+                  </button>
                 </>
               ) : (
                 <>
@@ -204,8 +258,12 @@ export default function TopNav() {
                 </>
               )}
 
-              <a href="https://pf.kakao.com/" target="_blank" rel="noreferrer noopener">kakao</a>
-              <a href="https://instagram.com/" target="_blank" rel="noreferrer noopener">instagram</a>
+              <a href="https://pf.kakao.com/" target="_blank" rel="noreferrer noopener">
+                kakao
+              </a>
+              <a href="https://instagram.com/" target="_blank" rel="noreferrer noopener">
+                instagram
+              </a>
             </nav>
           </div>
         </div>

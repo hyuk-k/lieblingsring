@@ -1,21 +1,16 @@
 // app/pay/toss/success/page.tsx
-"use client";
-
-import { useSearchParams } from "next/navigation";
-import React from "react";
 
 export default function TossSuccessPage() {
-  const sp = useSearchParams();
-  const paymentKey = sp?.get("paymentKey") ?? "";
-  const orderId = sp?.get("orderId") ?? "";
-  const amount = sp?.get("amount") ?? "";
+
+  // 토스 결제는 더이상 지원하지 않음을 안내하고 페이앱 이용 안내
 
   return (
-    <div>
-      <h1>결제 성공</h1>
-      <p>orderId: {orderId}</p>
-      <p>paymentKey: {paymentKey}</p>
-      <p>amount: {amount}</p>
-    </div>
+    <main style={{ padding: 40 }}>
+      <h1>결제 수단 변경 안내</h1>
+      <p>현재 토스 결제는 지원하지 않습니다. 페이앱으로 결제해 주세요.</p>
+      <p>
+        결제 관련 문의는 <a href="/inquiry">문의 페이지</a>를 이용해 주세요.
+      </p>
+    </main>
   );
 }

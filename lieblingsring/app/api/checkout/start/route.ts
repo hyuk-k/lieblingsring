@@ -24,7 +24,7 @@ type Cart = {
 
 type CheckoutPayload = {
   form: CheckoutForm;
-  method: string; // "NAVERPAY" | "TOSS" | other
+  method?: string; // 이전에는 "NAVERPAY" | "TOSS" 등, 이제는 PAYAPP 전용 처리
   cart: Cart;
 };
 
@@ -68,9 +68,6 @@ export async function POST(req: NextRequest) {
     if (!payload.form || !isForm(payload.form)) {
       return NextResponse.json({ ok: false, message: "주문자 이메일 등 폼 정보가 유효하지 않습니다." }, { status: 400 });
     }
-    if (!payload.method || typeof payload.method !== "string") {
-      return NextResponse.json({ ok: false, message: "결제 수단이 지정되지 않았습니다." }, { status: 400 });
-    }
 
     const cart = payload.cart;
     if (!cart.items.length) {
@@ -86,7 +83,7 @@ export async function POST(req: NextRequest) {
     const addr1 = typeof form.addr1 === "string" && form.addr1.trim().length > 0 ? form.addr1.trim() : null;
     const addr2 = typeof form.addr2 === "string" ? form.addr2.trim() : null;
 
-    // schema에서 required인 필드는 서버에서 보장해야 함
+    // 서버에서 required 조건 확인 (예: name/phone/zipcode가 스키마상 필수라면)
     if (!name || !phone || !zipcode) {
       return NextResponse.json({ ok: false, message: "이름/전화번호/우편번호는 필수입니다." }, { status: 400 });
     }
@@ -112,8 +109,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // payMethod를 확실히 string으로 할당
-    const method: string = String(payload.method);
+    // 결제 수단: PAYAPP 전용으로 고정
+    const method = "PAYAPP";
 
     // DB 트랜잭션으로 주문과 주문아이템 생성
     const createdOrder = await prisma.$transaction(async (tx) => {
@@ -143,15 +140,8 @@ export async function POST(req: NextRequest) {
       return ord;
     });
 
-    // PG 연동(플레이스홀더)
-    let redirectUrl: string | null = null;
-    if (method === "NAVERPAY") {
-      redirectUrl = `/order/${createdOrder.id}?mock=naverpay`;
-    } else if (method === "TOSS") {
-      redirectUrl = `/order/${createdOrder.id}?mock=toss`;
-    } else {
-      redirectUrl = `/order/${createdOrder.id}`;
-    }
+    // PG 연동(플레이스홀더) — PAYAPP 리다이렉트 또는 결제 준비 URL 반환
+    const redirectUrl = `/order/${createdOrder.id}?mock=payapp`;
 
     return NextResponse.json({ ok: true, orderId: createdOrder.id, redirectUrl }, { status: 201 });
   } catch (err) {

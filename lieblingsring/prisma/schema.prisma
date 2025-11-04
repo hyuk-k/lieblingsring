@@ -32,6 +32,7 @@ enum CouponType {
 /**
  * ===== Models =====
  */
+// ==== Product 모델 (중복 imageUrls 제거, images만 유지) ====
 model Product {
   id          String        @id @default(cuid())
   name        String
@@ -39,10 +40,9 @@ model Product {
   summary     String?
   price       Int
   salePrice   Int?
-  images      String[]      @default([]) // Postgres text[] 사용
+  images      String[]      @default([]) // Postgres text[] 사용 (상품 이미지 배열)
   description String?
   status      ProductStatus @default(ACTIVE)
-  imageUrls  String[] @default([])
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -110,13 +110,15 @@ model ProductCategory {
   @@index([productId])
 }
 
+// ==== Lookbook 모델 (단일 image -> images 배열로 확장) ====
 model Lookbook {
-  id        String   @id @default(cuid())
-  title     String
-  caption   String?
-  image     String // 대표 이미지 경로 (필수)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  title       String
+  caption     String?
+  description String?
+  images      String[] @default([]) // 룩북의 여러 이미지(배열)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Order {

@@ -1,7 +1,9 @@
-// app/api/admin/import-lookbook/route.ts
+// lieblingsring/lieblingsring/app/api/admin/import-lookbook/route.ts
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import csvParse from "csv-parse/lib/sync";
+import { parse as csvParse } from "csv-parse/sync";
 import XLSX from "xlsx";
 
 // TODO: 실제 관리자 인증 로직으로 대체하세요.
@@ -44,18 +46,21 @@ export const POST = async (req: Request) => {
             const title = String(r.title ?? r.name ?? "").trim();
             const description = String(r.description ?? "");
             const rawImgs = String(r.image_urls ?? r.images ?? "").trim();
-            const imageUrls = rawImgs ? rawImgs.split(/;|,/).map((s:string)=>s.trim()).filter(Boolean) : [];
+            const imageUrls = rawImgs ? rawImgs.split(/;|,/).map((s: string) => s.trim()).filter(Boolean) : [];
 
             if (!title) {
               results.push({ rowIndex, ok: false, message: "title 필요" });
               continue;
             }
 
+            // 우회 처리: 현재 schema에 image (단일) 필드가 있으므로, 여러 이미지 중 첫번째만 저장
+            const firstImage = imageUrls.length > 0 ? imageUrls[0] : "";
+
             const created = await tx.lookbook.create({
               data: {
                 title,
-                description,
-                imageUrls,
+                image: firstImage,
+                caption: description || null,
               },
             });
 

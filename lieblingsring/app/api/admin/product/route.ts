@@ -72,7 +72,7 @@ export async function POST(req: Request) {
         name: name.trim(),
         price,
         description: typeof description === "string" ? description : "",
-        imageUrls: safeImageUrls,
+        images: safeImageUrls,
         slug,
       },
     });

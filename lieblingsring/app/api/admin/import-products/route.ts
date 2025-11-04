@@ -1,7 +1,9 @@
-// app/api/admin/import-products/route.ts
+// lieblingsring/lieblingsring/app/api/admin/import-products/route.ts
+export const runtime = "nodejs"; // <- 추가: Node 런타임 사용
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import csvParse from "csv-parse/lib/sync";
+import { parse as csvParse } from "csv-parse/sync";
 import XLSX from "xlsx";
 
 // TODO: 실제 관리자 인증 로직으로 대체하세요.
@@ -85,7 +87,7 @@ export const POST = async (req: Request) => {
                 name,
                 price,
                 description,
-                imageUrls,
+                images: imageUrls, // images 가 실제 스키마 필드명이라면 이렇게
                 slug,
               },
             });

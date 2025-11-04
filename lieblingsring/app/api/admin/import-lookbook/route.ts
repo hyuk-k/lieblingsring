@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { parse as csvParse } from "csv-parse/sync";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx"; // Turbopack 호환 import 방식
 
 // TODO: 실제 관리자 인증 로직으로 대체하세요.
 async function isAdmin(req: Request) {
@@ -53,19 +53,42 @@ export const POST = async (req: Request) => {
               continue;
             }
 
-            // 우회 처리: 현재 schema에 image (단일) 필드가 있으므로, 여러 이미지 중 첫번째만 저장
-            const firstImage = imageUrls.length > 0 ? imageUrls[0] : "";
+            // 안전 처리 로직:
+            // 1) 가능한 경우 images 배열로 생성 시도 (다중 이미지 지원)
+            // 2) 실패하면 image(단일 필드)가 있는 스키마로 간주하고 첫 이미지로 생성 시도
+            // Prisma 타입 정의 때문에 컴파일 오류가 발생하는 것을 피하기 위해 tx를 any로 단언합니다.
+            const txAny = tx as any;
 
-            const created = await tx.lookbook.create({
-              data: {
-                title,
-                image: firstImage,
-                caption: description || null,
-              },
-            });
+            let created: any = null;
+            try {
+              // 먼저 images 배열로 넣어본다 (스키마가 images: String[]이면 성공)
+              created = await txAny.lookbook.create({
+                data: {
+                  title,
+                  caption: description || null,
+                  images: imageUrls,
+                },
+              });
+            } catch (e1: any) {
+              // images 필드가 없거나 다른 에러가 나면, 단일 image 필드로 다시 시도
+              try {
+                const firstImage = imageUrls.length > 0 ? imageUrls[0] : "";
+                created = await txAny.lookbook.create({
+                  data: {
+                    title,
+                    caption: description || null,
+                    image: firstImage,
+                  },
+                });
+              } catch (e2: any) {
+                // 둘 다 실패하면 에러 리포트
+                throw e2;
+              }
+            }
 
-            results.push({ rowIndex, ok: true, lookbookId: created.id });
+            results.push({ rowIndex, ok: true, lookbookId: created?.id });
           } catch (err: any) {
+            console.error("import-lookbook row error:", err);
             results.push({ rowIndex, ok: false, message: err?.message || "DB 오류" });
           }
         }

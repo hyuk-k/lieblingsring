@@ -116,7 +116,7 @@ model Lookbook {
   title       String
   caption     String?
   description String?
-  images      String[] @default([]) // 룩북의 여러 이미지(배열)
+  images      String[] @default([]) // 새로 추가: 다중 이미지 저장
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

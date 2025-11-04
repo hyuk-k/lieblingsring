@@ -4,7 +4,7 @@ export const runtime = "nodejs"; // <- 추가: Node 런타임 사용
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { parse as csvParse } from "csv-parse/sync";
-import XLSX from "xlsx";
+import * as XLSX from "xlsx";
 
 // TODO: 실제 관리자 인증 로직으로 대체하세요.
 async function isAdmin(req: Request) {

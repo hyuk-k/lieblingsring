@@ -1,210 +1,171 @@
 // lieblingsring/lieblingsring/app/admin/product-add/page.tsx
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { uploadWithProgress } from "@/components/uploadWithProgress"; // 반드시 생성되어 있어야 합니다
+import React, { useState } from "react";
 
-const MAX_FILES = 6;
-const MAX_BYTES = 6 * 1024 * 1024; // 6MB
+type UploadResult = {
+  ok: boolean;
+  url?: string;
+  message?: string;
+};
 
-export default function AdminProductAdd() {
-  const router = useRouter();
+export default function AdminProductAddPage() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState<number | "">("");
-  const [summary, setSummary] = useState("");
   const [description, setDescription] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
-  const [localPreviews, setLocalPreviews] = useState<string[]>([]);
-  const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
+  const [files, setFiles] = useState<FileList | null>(null);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState<number>(0); // 0..100
 
-  // revoke Object URLs on unmount or when previews change
-  const prevUrlsRef = useRef<string[]>([]);
-  useEffect(() => {
-    const prev = prevUrlsRef.current;
-    return () => {
-      (prev || []).forEach((u) => URL.revokeObjectURL(u));
-    };
-  }, []);
-  useEffect(() => {
-    // cleanup previous when localPreviews changes
-    prevUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
-    prevUrlsRef.current = localPreviews.slice();
-  }, [localPreviews]);
+  const MAX_PER_FILE = 10 * 1024 * 1024; // 10MB
+  const MAX_FILES = 6;
 
-  const onFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const fl = e.target.files;
-    if (!fl) return;
-    const arr = Array.from(fl).slice(0, MAX_FILES);
-    // client-side validation
-    for (const f of arr) {
-      if (!f.type.startsWith("image/")) {
-        setError("이미지 파일만 업로드할 수 있습니다.");
-        return;
-      }
-      if (f.size > MAX_BYTES) {
-        setError("파일이 너무 큽니다(최대 6MB).");
-        return;
-      }
+  function validateFiles(fls: FileList | null) {
+    if (!fls || fls.length === 0) return { ok: false, message: "파일을 선택하세요." };
+    if (fls.length > MAX_FILES) return { ok: false, message: `최대 ${MAX_FILES}장까지 업로드 가능합니다.` };
+    for (const f of Array.from(fls)) {
+      if (f.size > MAX_PER_FILE) return { ok: false, message: `${f.name}의 용량이 10MB를 초과합니다.` };
     }
-    setFiles(arr);
-    setLocalPreviews(arr.map((f) => URL.createObjectURL(f)));
-    setError(null);
-  };
+    return { ok: true };
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const fls = e.target.files;
+    setFiles(fls);
+    if (!fls) {
+      setPreviews([]);
+      return;
+    }
+    const arr = Array.from(fls).map((f) => URL.createObjectURL(f));
+    setPreviews(arr);
+  }
+
+  async function fetchSignature() {
+    const res = await fetch("/api/uploads/sign");
+    const json = await res.json();
+    if (!res.ok || !json.ok) throw new Error(json?.message || "signature 획득 실패");
+    return json as { signature: string; timestamp: number; cloudName: string; apiKey: string };
+  }
+
+  async function uploadFileToCloudinary(file: File, signData: { signature: string; timestamp: number; cloudName: string; apiKey: string }): Promise<UploadResult> {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("api_key", signData.apiKey);
+    fd.append("timestamp", String(signData.timestamp));
+    fd.append("signature", signData.signature);
+    // 옵션: folder 등 추가 가능
+    try {
+      const cloudRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudName}/image/upload`, {
+        method: "POST",
+        body: fd,
+      });
+      const cloudJson = await cloudRes.json();
+      if (!cloudRes.ok) return { ok: false, message: cloudJson?.error?.message || "Cloudinary 업로드 실패" };
+      return { ok: true, url: cloudJson.secure_url };
+    } catch (err: any) {
+      console.error("cloud upload error:", err);
+      return { ok: false, message: err?.message || "업로드 중 오류" };
+    }
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-
-    if (!name.trim()) return setError("상품명을 입력하세요.");
-    if (!price || Number(price) <= 0) return setError("유효한 가격을 입력하세요.");
+    if (!name.trim()) return alert("상품명을 입력하세요.");
+    if (!price || Number.isNaN(Number(price))) return alert("유효한 가격을 입력하세요.");
+    const v = validateFiles(files);
+    if (!v.ok) return alert(v.message);
 
     setLoading(true);
-    setProgress(0);
     try {
-      let imageUrls: string[] = [];
+      const signData = await fetchSignature();
 
-      // 1) 이미지가 선택되어 있으면 업로드 (진행률 반영)
-      if (files.length > 0) {
-        const fd = new FormData();
-        files.forEach((f) => fd.append("images", f));
+      // 여러 파일을 병렬 업로드
+      const fileList = Array.from(files || []);
+      const uploadPromises = fileList.map((f) => uploadFileToCloudinary(f, signData));
+      const results = await Promise.all(uploadPromises);
 
-        // uploadWithProgress는 XHR을 사용해 progress 콜백을 제공합니다.
-        const res = await uploadWithProgress("/api/uploads", fd, (pct) => {
-          setProgress(pct);
-        });
-
-        // 서버 응답을 읽습니다
-        const upJson = await res.json();
-        if (!res.ok || !upJson?.ok) {
-          throw new Error(upJson?.message || "이미지 업로드 실패");
-        }
-
-        const images = Array.isArray(upJson.images) ? upJson.images : [];
-        imageUrls = images.map((it: any) => it.url).filter(Boolean);
-        setUploadedUrls(imageUrls);
-        setProgress(100);
+      const failed = results.filter((r) => !r.ok);
+      if (failed.length > 0) {
+        alert("이미지 업로드 실패: " + failed.map((f) => f.message).join(", "));
+        setLoading(false);
+        return;
       }
 
-      // 2) 상품 생성 호출
+      const imageUrls = results.map((r) => r.url!) ;
+
+      // 이제 서버에 제품 생성 요청 (images: string[])
       const createRes = await fetch("/api/admin/product", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: name.trim(),
+          name,
           price: Number(price),
-          summary,
           description,
-          imageUrls,
+          images: imageUrls,
         }),
       });
 
-      const createJson = await createRes.json();
-      if (!createRes.ok || !createJson?.ok) {
-        // 필요 시 업로드된 이미지 롤백(삭제) 로직 추가 가능
-        throw new Error(createJson?.message || "상품 생성 실패");
+      let createJson;
+      try {
+        createJson = await createRes.json();
+      } catch (err) {
+        const text = await createRes.text();
+        console.error("create product non-json response:", text);
+        throw new Error("상품 생성 중 서버 오류: " + (text || createRes.statusText));
       }
 
-      // 성공하면 목록으로 이동하거나 새로 만든 상품 미리보기로 이동
-      router.push("/admin/product");
+      if (!createRes.ok) {
+        alert("상품 생성 실패: " + (createJson?.message || "서버 오류"));
+        setLoading(false);
+        return;
+      }
+
+      alert("상품이 성공적으로 생성되었습니다.");
+      // 초기화
+      setName("");
+      setPrice("");
+      setDescription("");
+      setFiles(null);
+      setPreviews([]);
     } catch (err: any) {
       console.error("AdminProductAdd error:", err);
-      setError(err?.message || "서버 오류가 발생했습니다.");
+      alert("오류: " + (err?.message || "알 수 없는 오류"));
     } finally {
       setLoading(false);
-      // 진행률 초기화(짧은 시간 뒤)
-      setTimeout(() => setProgress(0), 400);
     }
-  };
-
-  // optional: remove a selected local file before upload
-  const removeLocalFile = (index: number) => {
-    const newFiles = files.slice();
-    const newPreviews = localPreviews.slice();
-    // revoke the object URL
-    const url = newPreviews[index];
-    if (url) URL.revokeObjectURL(url);
-    newFiles.splice(index, 1);
-    newPreviews.splice(index, 1);
-    setFiles(newFiles);
-    setLocalPreviews(newPreviews);
-  };
+  }
 
   return (
-    <div style={{ padding: 20, maxWidth: 980 }}>
+    <main style={{ padding: 20 }}>
       <h1>상품 추가</h1>
       <form onSubmit={handleSubmit}>
-        <div style={{ marginTop: 12 }}>
-          <label htmlFor="name">상품명</label>
-          <input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+        <div>
+          <label>상품명</label>
+          <input value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div>
+          <label>가격</label>
+          <input value={price} onChange={(e) => setPrice(e.target.value === "" ? "" : Number(e.target.value))} />
+        </div>
+        <div>
+          <label>설명</label>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+        </div>
+        <div>
+          <label>이미지 (최대 6장, 각 10MB)</label>
+          <input type="file" multiple accept="image/*" onChange={onFileChange} />
+        </div>
+
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          {previews.map((p, i) => (
+            <img key={i} src={p} alt={`preview-${i}`} style={{ width: 120, height: 120, objectFit: "cover" }} />
+          ))}
         </div>
 
         <div style={{ marginTop: 12 }}>
-          <label htmlFor="price">가격</label>
-          <input id="price" type="number" value={price} onChange={(e) => setPrice(e.target.value === "" ? "" : Number(e.target.value))} required />
-        </div>
-
-        <div style={{ marginTop: 12 }}>
-          <label htmlFor="summary">요약</label>
-          <input id="summary" value={summary} onChange={(e) => setSummary(e.target.value)} />
-        </div>
-
-        <div style={{ marginTop: 12 }}>
-          <label htmlFor="description">상세설명</label>
-          <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} rows={6} />
-        </div>
-
-        <div style={{ marginTop: 12 }}>
-          <label htmlFor="images">이미지 (최대 {MAX_FILES}장, 각 6MB 이하)</label>
-          <input id="images" type="file" accept="image/*" multiple onChange={onFiles} />
-        </div>
-
-        {/* 로컬 미리보기(선택 후) */}
-        {localPreviews.length > 0 && (
-          <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-            {localPreviews.map((p, i) => (
-              <div key={i} style={{ width: 120, height: 120, position: "relative", borderRadius: 6, overflow: "hidden", border: "1px solid #eee" }}>
-                <img src={p} alt={`preview-${i}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                <button type="button" onClick={() => removeLocalFile(i)} aria-label={`이미지 ${i + 1} 제거`} style={{ position: "absolute", top: 6, right: 6 }}>✕</button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* 업로드 진행률 바 */}
-        {progress > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ width: "100%", background: "#eee", height: 8, borderRadius: 4 }}>
-              <div style={{ width: `${progress}%`, height: "100%", background: "#111", borderRadius: 4, transition: "width 0.2s linear" }} />
-            </div>
-            <div style={{ fontSize: 12, marginTop: 6 }}>{progress}% 업로드 중...</div>
-          </div>
-        )}
-
-        {/* 업로드 후 서버에서 반환된 이미지 미리보기(선택적) */}
-        {uploadedUrls.length > 0 && (
-          <div style={{ marginTop: 12 }}>
-            <h4>업로드된 이미지</h4>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {uploadedUrls.map((u, i) => (
-                <div key={i} style={{ width: 120, height: 120, overflow: "hidden", borderRadius: 6, border: "1px solid #eee" }}>
-                  <img src={u} alt={`uploaded-${i}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {error && <div role="alert" style={{ color: "crimson", marginTop: 12 }}>{error}</div>}
-
-        <div style={{ marginTop: 16 }}>
-          <button type="submit" disabled={loading}>{loading ? "저장 중..." : "저장"}</button>
-          <button type="button" onClick={() => router.back()} style={{ marginLeft: 8 }}>취소</button>
+          <button type="submit" disabled={loading}>{loading ? "업로드 중..." : "저장"}</button>
         </div>
       </form>
-    </div>
+    </main>
   );
 }

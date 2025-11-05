@@ -1,69 +1,186 @@
-:root { --black:#000; --gray:#666; --border:#e5e7eb; --bg:#fff; }
+:root {
+  --black: #000;
+  --gray: #666;
+  --border: #e5e7eb;
+  --bg: #fff;
+  --muted: #9ca3af;
+  --danger: #dc2626;
+  --radius: 8px;
+  --container-max: 1040px;
+}
 
-* { box-sizing: border-box; }
-html, body { padding:0; margin:0; }
+/* 기본 리셋 / 박스 모델 */
+* { box-sizing: border-box; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+html, body { padding: 0; margin: 0; height: 100%; }
 body {
-  font-family: system-ui, "Noto Sans KR", sans-serif;
-  color:#111; background:#fff; line-height:1.5;
+  font-family: system-ui, "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  color: #111;
+  background: var(--bg);
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
 }
 a { color: inherit; text-decoration: none; }
 
-.container { max-width:1040px; margin:0 auto; padding:0 16px; }
+/* 레이아웃 컨테이너 */
+.container {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 16px;
+}
 
+/* 접근성: 포커스 가시성 */
+a:focus-visible, button:focus-visible, input:focus-visible,
+select:focus-visible, textarea:focus-visible {
+  outline: 3px solid rgba(0,0,0,0.9);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* 기본 유틸 */
 .btn {
   display:inline-flex; align-items:center; justify-content:center;
-  padding:10px 14px; border-radius:8px; border:1px solid transparent;
-  transition:.2s; font-weight:600; cursor:pointer;
+  padding:10px 14px; border-radius:var(--radius); border:1px solid transparent;
+  transition:.16s ease; font-weight:600; cursor:pointer; user-select:none;
+  background: var(--bg);
 }
-.btn-primary { background:#000; color:#fff; }
-.btn-outline { background:#fff; color:#000; border-color:#000; }
-.btn:disabled, .btn[aria-disabled="true"] { opacity:.5; cursor:not-allowed; }
+.btn-primary { background: var(--black); color:#fff; border-color: transparent; }
+.btn-outline { background:#fff; color:var(--black); border-color:var(--black); }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; }
 
+/* form 요소 기본 */
 .input, .textarea, select {
   width:100%; border:1px solid var(--border);
-  padding:10px 12px; border-radius:8px;
+  padding:10px 12px; border-radius:var(--radius); font-size:14px;
+  background: #fff; color: inherit;
 }
-.textarea { min-height:120px; }
+.textarea { min-height:120px; resize:vertical; }
 
+/* 타이포그래피 보조 */
 .prose h2 { font-size:20px; margin:16px 0 8px; }
 .prose h3 { font-size:18px; margin:14px 0 6px; }
 
+/* 헤더 / 네비게이션 */
 header {
   border-bottom:1px solid var(--border);
-  background:#fff; position:sticky; top:0; z-index:10;
+  background:#fff; position:sticky; top:0; z-index:20;
 }
 header .wrap {
   display:flex; align-items:center; gap:16px; justify-content:space-between;
   padding:10px 16px;
 }
-
 nav a { padding:8px 10px; border-radius:6px; }
 nav a:hover { background:#f5f5f5; }
 
-footer { border-top:1px solid var(--border); padding:20px 16px; margin-top:40px; color:#555; }
+/* 푸터 */
+footer { border-top:1px solid var(--border); padding:20px 16px; margin-top:40px; color:var(--gray); }
 
+/* 이미지 기본 */
 img { max-width:100%; height:auto; display:block; }
-.grid { display:grid; }
 
-/* 반응형 유틸(모바일: <=768px) */
+/* 그리드 유틸 (기본) */
+.grid { display:grid; gap: 16px; }
+
+/* 반응형 유틸 */
 @media (max-width: 768px) {
   .hide-sm { display: none !important; }
   .show-sm { display: flex !important; }
 }
-
-/* 반응형 유틸(데스크톱: >=769px) */
 @media (min-width: 769px) {
   .hide-sm { display: flex !important; }
   .show-sm { display: none !important; }
 }
 
-/* 포커스 가시성(접근성) */
-a:focus-visible, button:focus-visible, input:focus-visible,
-select:focus-visible, textarea:focus-visible {
-  outline: 2px solid #000; outline-offset: 2px;
-}
-
-/* 모션 민감 사용자 배려(선택) */
+/* 접근성: motion reduce */
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
+}
+
+/* ---- Shop 전용 스타일 ----
+   - 핵심 요구: 한 행에 3개 카드(데스크탑), 반응형으로 2/1 컬럼으로 축소
+*/
+.shop-head { margin-bottom: 16px; }
+.tabs { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+/* 탭 버튼 공통 */
+.tab {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+.tab.is-active {
+  background: var(--black);
+  color: #fff;
+  border-color: var(--black);
+}
+
+/* shop 그리드 - 데스크탑 기본 3컬럼 */
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+/* 반응형: 태블릿 2컬럼, 모바일 1컬럼 */
+@media (max-width: 1024px) {
+  .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+}
+@media (max-width: 600px) {
+  .shop-grid { grid-template-columns: 1fr; gap: 12px; }
+}
+
+/* 카드 스타일 (제품 카드 공통) */
+.card {
+  display:block;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  overflow: hidden;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.card:hover { transform: translateY(-4px); box-shadow: 0 6px 18px rgba(0,0,0,0.06); }
+.card-img { width:100%; height:100%; object-fit:cover; display:block; }
+
+/* 카드 내부 구성 */
+.card > .card-media { width:100%; height: 300px; display:flex; align-items:center; justify-content:center; background:#fafafa; overflow:hidden; }
+.card > h3 { margin: 12px 12px 6px; font-size:16px; line-height:1.2; }
+.card-price { margin: 0 12px 12px; font-weight:700; }
+
+/* sale 표시 */
+.card .sale {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* placeholder 이미지 스타일 (옵셔널) */
+.placeholder {
+  display:flex; align-items:center; justify-content:center;
+  color: var(--muted); font-size:14px; padding:20px;
+}
+
+/* 유틸: muted text */
+.muted { color: var(--muted); }
+
+/* 에러 메시지 스타일 */
+.error { color: var(--danger); font-weight: 600; }
+
+/* form, table 등 작은 보강 */
+.table { width:100%; border-collapse: collapse; }
+.table th, .table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align:left; }
+
+/* 반응형 이미지 갤러리(추가 필요 시) */
+.gallery { display:grid; gap:10px; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+
+/* 유틸 스크롤바 숨김(선택) */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* 작은 화면에서 버튼 풀-블록 처리 */
+@media (max-width: 420px) {
+  .btn { width: 100%; justify-content: center; }
 }

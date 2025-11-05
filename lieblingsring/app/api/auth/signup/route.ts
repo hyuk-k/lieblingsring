@@ -1,45 +1,56 @@
-// app/api/auth/signup/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
+// lieblingsring/lieblingsring/app/api/auth/signup/route.ts
+export const runtime = "nodejs";
+
+import { NextResponse } from "next/server";
+import bcrypt from "bcrypt";
 import { prisma } from "@/lib/db";
 
-const SALT_ROUNDS = 10;
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,24}$/.test(email);
+}
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const email = typeof (body as any).email === "string" ? (body as any).email.trim() : "";
-    const password = typeof (body as any).password === "string" ? (body as any).password : "";
-    const name = typeof (body as any).name === "string" ? (body as any).name.trim() : "";
-
-    if (!email || !password) {
-      return NextResponse.json({ ok: false, message: "이메일과 비밀번호가 필요합니다." }, { status: 400 });
-    }
-    if (password.length < 6) {
-      return NextResponse.json({ ok: false, message: "비밀번호는 최소 6자 이상이어야 합니다." }, { status: 400 });
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ ok: false, message: "잘못된 요청" }, { status: 400 });
     }
 
-    const existing = await prisma.customer.findUnique({ where: { email } });
+    const { email, password, name } = body as { email?: unknown; password?: unknown; name?: unknown };
+
+    if (!email || typeof email !== "string" || !isValidEmail(email)) {
+      return NextResponse.json({ ok: false, message: "유효한 이메일 주소를 입력하세요." }, { status: 400 });
+    }
+    if (!password || typeof password !== "string" || password.length < 8) {
+      return NextResponse.json({ ok: false, message: "비밀번호는 8자 이상이어야 합니다." }, { status: 400 });
+    }
+
+    // Prisma에서 Customer 모델이 정의되어 있으므로 customer 사용
+    if (!(prisma as any).customer) {
+      console.error("Prisma client has no .customer model. Check prisma/schema.prisma");
+      return NextResponse.json({ ok: false, message: "서버 설정 오류: 사용자 모델을 찾을 수 없습니다." }, { status: 500 });
+    }
+
+    // email은 schema에서 @unique이므로 findUnique 사용
+    const existing = await prisma.customer.findUnique({ where: { email } as any });
     if (existing) {
-      return NextResponse.json({ ok: false, message: "이미 사용 중인 이메일입니다." }, { status: 409 });
+      return NextResponse.json({ ok: false, message: "이미 가입된 이메일입니다." }, { status: 409 });
     }
 
-    const hashed = await bcrypt.hash(password, SALT_ROUNDS);
-    const created = await prisma.customer.create({
+    const hashed = await bcrypt.hash(password, 10);
+
+    // 여기서 필드명을 schema.prisma의 실제 필드명(password)으로 사용
+    const customer = await prisma.customer.create({
       data: {
         email,
-        // schema에는 customer에 password 필드가 없을 수도 있으므로 확인 필요
-        // 만약 schema에 password 없다면 별도 인증 테이블을 사용하세요.
-        // 여기서는 가정상 password 필드가 있다면 아래처럼 저장:
-        ...(Boolean((prisma as any).customer && true) ? { password: hashed } : {}),
-        name: name || null,
-      } as any,
+        password: hashed,
+        name: typeof name === "string" ? name : "",
+      },
     });
 
-    const { password: _p, ...safe } = created as any;
-    return NextResponse.json({ ok: true, data: safe }, { status: 201 });
-  } catch (err) {
-    console.error("POST /api/auth/signup error:", err);
+    return NextResponse.json({ ok: true, customerId: customer.id });
+  } catch (err: any) {
+    console.error("signup error:", err);
     return NextResponse.json({ ok: false, message: "서버 오류" }, { status: 500 });
   }
 }

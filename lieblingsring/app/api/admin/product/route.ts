@@ -4,15 +4,8 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
-type Body = {
-  name?: unknown;
-  price?: unknown;
-  description?: unknown;
-  images?: unknown;
-};
-
 async function isAdmin(req: Request) {
-  // 실제 인증 로직으로 교체하세요 (쿠키/헤더 검증 등)
+  // 실제 인증 로직으로 교체하세요
   return true;
 }
 
@@ -27,10 +20,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, message: "잘못된 요청" }, { status: 400 });
     }
 
-    const { name, price, description, images } = body as Body;
+    const { name, price, description, images, subcategory } = body as {
+      name?: unknown;
+      price?: unknown;
+      description?: unknown;
+      images?: unknown;
+      subcategory?: unknown;
+    };
 
-    if (!name || typeof name !== "string" || !name.trim()) {
-      return NextResponse.json({ ok: false, message: "상품명(name)이 필요합니다." }, { status: 400 });
+    if (!name || typeof name !== "string") {
+      return NextResponse.json({ ok: false, message: "상품명 필요" }, { status: 400 });
     }
 
     let priceNum: number | null = null;
@@ -40,15 +39,15 @@ export async function POST(req: Request) {
       if (!Number.isNaN(n)) priceNum = Math.floor(n);
     }
     if (priceNum === null) {
-      return NextResponse.json({ ok: false, message: "유효한 가격(price)을 입력하세요." }, { status: 400 });
+      return NextResponse.json({ ok: false, message: "유효한 가격 필요" }, { status: 400 });
     }
 
-    let safeImages: string[] = [];
-    if (Array.isArray(images)) {
-      safeImages = images.filter((x) => typeof x === "string");
-    } else if (typeof images === "string" && images.trim() !== "") {
-      safeImages = [images];
-    }
+    // subcategory 안전값 보정: 허용 값만 통과시키기 (안전)
+    const allowed = ["jewelry", "smallitem", "other"];
+    let safeSub = undefined as string | undefined;
+    if (typeof subcategory === "string" && allowed.includes(subcategory)) safeSub = subcategory;
+
+    const safeImages: string[] = Array.isArray(images) ? images.filter((x) => typeof x === "string") : [];
 
     const product = await prisma.product.create({
       data: {
@@ -56,13 +55,14 @@ export async function POST(req: Request) {
         price: priceNum,
         description: typeof description === "string" ? description : "",
         images: safeImages,
-        slug: (name as string).toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]+/g, ""),
+        subcategory: safeSub,
+        slug: name.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^\w\-]+/g, ""),
       },
     });
 
     return NextResponse.json({ ok: true, product });
   } catch (err: any) {
-    console.error("create product error:", err);
+    console.error("admin product create error:", err);
     return NextResponse.json({ ok: false, message: "서버 오류" }, { status: 500 });
   }
 }

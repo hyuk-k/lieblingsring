@@ -190,6 +190,8 @@ model Customer {
   carts     Cart[]
   orders    Order[]
   reviews   Review[]
+  announcements Announcement[] @relation("AnnouncementAuthor")
+  qnas         Qna[]          @relation("QnaAuthor")
 }
 
 model Address {
@@ -235,6 +237,30 @@ model CartItem {
   @@index([cartId])
   @@index([productId])
 }
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  authorId  String?  // 작성자가 optional일 수 있음
+  author    Customer? @relation(fields: [authorId], references: [id], name: "AnnouncementAuthor")
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Qna {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  authorId  String
+  author    Customer @relation(fields: [authorId], references: [id], name: "QnaAuthor")
+  answered  Boolean  @default(false)
+  answer    String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 
 /**
  * 결제 기록

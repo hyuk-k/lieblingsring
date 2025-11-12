@@ -16,6 +16,8 @@ type CartItem = {
   name: string;
   price: number;
   qty: number;
+  // variantId는 선택적일 수 있으므로 optional로 처리
+  variantId?: string | null;
 };
 
 type Cart = {
@@ -24,7 +26,7 @@ type Cart = {
 
 type CheckoutPayload = {
   form: CheckoutForm;
-  method?: string; // 이전에는 "NAVERPAY" | "TOSS" 등, 이제는 PAYAPP 전용 처리
+  method?: string;
   cart: Cart;
 };
 
@@ -125,24 +127,28 @@ export async function POST(req: NextRequest) {
           totalAmount: total,
           payMethod: method,
           items: {
-            create: cart.items.map((it) => ({
-              product: { connect: { id: it.id } },
-              name: it.name,
-              price: it.price,
-              quantity: qtyValue,
-              qty: qtyValue,
-              variantId: it.variantId ?? undefined, 
-            })),
+            create: cart.items.map((it) => {
+              // map 내부에서 qtyValue 선언 — 타입/범위 오류 방지
+              const qtyValue = it.qty ?? 1;
+              return {
+                product: { connect: { id: it.id } },
+                name: it.name,
+                price: it.price,
+                // Prisma 스키마에서 required로 기대하는 필드들을 모두 채움
+                quantity: qtyValue,
+                qty: qtyValue,
+                variantId: (it as any).variantId ?? undefined,
+              };
+            }),
           },
         },
       });
 
-      // 필요 시 재고 감소나 통계 처리 추가
-
+      // 필요 시 재고 감소나 통계 처리 추가 (tx 사용)
       return ord;
     });
 
-    // PG 연동(플레이스홀더) — PAYAPP 리다이렉트 또는 결제 준비 URL 반환
+    // 결제 처리(여기서는 PAYAPP 연동 placeholder)
     const redirectUrl = `/order/${createdOrder.id}?mock=payapp`;
 
     return NextResponse.json({ ok: true, orderId: createdOrder.id, redirectUrl }, { status: 201 });

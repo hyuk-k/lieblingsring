@@ -1,11 +1,17 @@
 // app/mypage/page.tsx
 import QnaCreateClient from '../community/qna/QnaCreateClient';
 import { prisma } from '@/lib/db';
-import type { Qna } from '@prisma/client';
+import type { Qna, Order, OrderItem, Payment } from '@prisma/client';
 
 export const revalidate = 0;
 
-export default async function QnaPage() {
+type OrderWithItems = Order & {
+  items: (OrderItem & { product?: { id: string; name?: string; title?: string } })[];
+  payments: Payment[];
+};
+
+export default async function MyPage() {
+  // Q&A 목록(서버에서 가져오기)
   let qnas: Qna[] = [];
   try {
     qnas = await prisma.qna.findMany({
@@ -16,29 +22,36 @@ export default async function QnaPage() {
     console.error('QnaPage prisma error', e);
   }
 
-  // 주문 조회(타입 추론 오류 방지: const로 직접 할당)
-  let orders = [];
+  // 주문 조회: ordersRaw를 const로 직접 할당해 타입 추론 보장
+  let orders: {
+    id: string;
+    totalAmount: number;
+    status: string;
+    createdAt: string;
+    items: { id: string; quantity: number; price: number; product?: { id: string; title?: string } }[];
+    payments: Payment[];
+  }[] = [];
+
   try {
-    const ordersRaw = await prisma.order.findMany({
+    const ordersRaw = (await prisma.order.findMany({
       orderBy: { createdAt: 'desc' },
       take: 10,
       include: {
         items: { include: { product: true } },
         payments: true,
       },
-    });
+    })) as OrderWithItems[];
 
-    // ordersRaw를 화면에 맞게 매핑
-    orders = ordersRaw.map((o: any) => ({
+    orders = ordersRaw.map((o) => ({
       id: o.id,
       totalAmount: o.totalAmount,
       status: o.status,
-      createdAt: o.createdAt?.toISOString?.() ?? String(o.createdAt),
-      items: (o.items ?? []).map((it: any) => ({
+      createdAt: o.createdAt instanceof Date ? o.createdAt.toISOString() : String(o.createdAt),
+      items: (o.items ?? []).map((it) => ({
         id: it.id,
-        quantity: it.quantity ?? it.qty ?? 0,
-        price: it.price,
-        product: it.product ? { id: it.product.id, title: it.product.name ?? it.product.title } : null,
+        quantity: (it as any).quantity ?? (it as any).qty ?? 0,
+        price: (it as any).price ?? 0,
+        product: it.product ? { id: (it.product as any).id, title: (it.product as any).name ?? (it.product as any).title } : undefined,
       })),
       payments: o.payments ?? [],
     }));
@@ -48,7 +61,7 @@ export default async function QnaPage() {
 
   return (
     <main style={{ padding: 24 }}>
-      <h1>Q&A</h1>
+      <h1>마이페이지</h1>
 
       <section style={{ marginBottom: 24 }}>
         <h2>질문 등록</h2>
@@ -61,7 +74,7 @@ export default async function QnaPage() {
           {orders.length === 0 ? (
             <li>주문이 없습니다.</li>
           ) : (
-            orders.map((o: any) => (
+            orders.map((o) => (
               <li key={o.id} style={{ marginBottom: 12 }}>
                 <div>주문번호: {o.id}</div>
                 <div>총금액: {o.totalAmount}</div>
@@ -69,7 +82,7 @@ export default async function QnaPage() {
                 <details>
                   <summary>항목 보기</summary>
                   <ul>
-                    {o.items.map((it: any) => (
+                    {o.items.map((it) => (
                       <li key={it.id}>
                         {it.product?.title ?? '상품'} x{it.quantity} — {it.price}원
                       </li>

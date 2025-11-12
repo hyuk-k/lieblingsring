@@ -149,12 +149,15 @@ model OrderItem {
   id        String  @id @default(cuid())
   orderId   String
   productId String
+  quantity  Int
   variantId String? // 선택한 variant가 있으면 저장
   name      String
   price     Int
   qty       Int
 
-  Order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
 
   @@index([orderId])
   @@index([productId])
@@ -270,13 +273,14 @@ model Payment {
   orderId   String   @unique
   provider  String // "NAVERPAY", "TOSS", "STRIPE" 등
   amount    Int
+  provider   String
   currency  String   @default("KRW")
-  status    String
+  status     String   @default("completed")
   txId      String?
   raw       Json? // PG로부터 받은 전체 응답 저장(선택)
   createdAt DateTime @default(now())
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order      Order    @relation(fields: [orderId], references: [id])
 }
 
 /**
@@ -311,6 +315,15 @@ model Coupon {
   validFrom DateTime?
   validTo   DateTime?
   createdAt DateTime   @default(now())
+}
+
+model Point {
+  id         String   @id @default(cuid())
+  customerId String
+  amount     Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  customer   Customer @relation(fields: [customerId], references: [id])
 }
 
 /**

@@ -54,11 +54,11 @@ model Product {
   // Relations
   productImages ProductImage[]      @relation("Product_ProductImages")
   variants      ProductVariant[]    @relation("Product_ProductVariants")
-  categories    ProductCategory[]   // M:N via join table model below
-  reviews       Review[]            // Review 모델이 존재하면 연관
+  categories    ProductCategory[]   // M:N
+  reviews       Review[]
 
-  @@index([status, createdAt])
-  @@index([slug])
+  // OrderItem과의 반대 관계 필드 추가 (필수)
+  orderItems    OrderItem[]         @relation("ProductOrderItems")
 }
 
 model ProductImage {
@@ -144,24 +144,23 @@ model Order {
   customer    Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   items   OrderItem[]
-  payment Payment?
+  payment  Payment? @relation(fields: [], references: [])
 
   @@index([status, createdAt])
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
-  orderId   String
-  productId String
-  quantity  Int
-  variantId String? // 선택한 variant가 있으면 저장
-  name      String
-  price     Int
-  qty       Int
+  id         String  @id @default(cuid())
+  orderId    String
+  productId  String
+  quantity   Int
+  variantId  String?
+  name       String
+  price      Int
+  qty        Int
 
-
-  order     Order   @relation(fields: [orderId], references: [id])
-  product   Product @relation(fields: [productId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation("ProductOrderItems", fields: [productId], references: [id])
 
   @@index([orderId])
   @@index([productId])
@@ -275,17 +274,17 @@ model Qna {
  * 결제 기록
  */
 model Payment {
-  id           String   @id @default(cuid())
-  orderId      String   // Order와 1:1이라면 unique, 여러 결제 허용이면 unique 제거
-  order        Order    @relation(fields: [orderId], references: [id])
-  provider     String   // "NAVERPAY", "TOSS", "STRIPE" 등
-  providerInfo String?  // 추가 정보가 필요하면 사용
-  amount       Int
-  currency     String   @default("KRW")
-  status       String   @default("completed")
-  txId         String?
-  raw          Json?    // PG로부터 받은 전체 응답 저장(선택)
-  createdAt    DateTime @default(now())
+  id        String   @id @default(cuid())
+  orderId   String   // <-- @unique 제거 (one-to-many)
+  order     Order    @relation(fields: [orderId], references: [id])
+  provider  String
+  providerInfo String?
+  amount    Int
+  currency  String   @default("KRW")
+  status    String   @default("completed")
+  txId      String?
+  raw       Json?
+  createdAt DateTime @default(now())
 
   @@index([orderId])
 }

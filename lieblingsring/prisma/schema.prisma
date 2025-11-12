@@ -13,6 +13,8 @@ datasource db {
  */
 enum ProductStatus {
   ACTIVE
+  INACTIVE
+  DRAFT
   SOLD_OUT
   HIDDEN
 }
@@ -111,14 +113,6 @@ model ProductCategory {
   @@unique([productId, categoryId])
   @@index([categoryId])
   @@index([productId])
-}
-
-// Enum 예시 (프로젝트에 이미 있으면 중복 추가하지 마세요)
-enum ProductStatus {
-  ACTIVE
-  INACTIVE
-  DRAFT
-  SOLD_OUT
 }
 
 // ==== Lookbook 모델 (단일 image -> images 배열로 확장) ====

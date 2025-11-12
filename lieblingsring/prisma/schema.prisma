@@ -34,31 +34,33 @@ enum CouponType {
 /**
  * ===== Models =====
  */
-// ==== Product 모델 (중복 imageUrls 제거, images만 유지) ====
-// ===== Product 관련 모델들 =====
 
+/**
+ * Product 관련 모델
+ */
 model Product {
-  id          String        @id @default(cuid())
-  name        String
-  slug        String        @unique
-  summary     String?
-  price       Int
-  salePrice   Int?
-  images      String[]      @default([]) // 간단 이미지 URL 배열(보조용)
-  description String?
-  subcategory String?       // ex. "jewelry" | "smallitem" | "other"
-  status      ProductStatus @default(ACTIVE)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id            String           @id @default(cuid())
+  name          String
+  slug          String           @unique
+  summary       String?
+  price         Int
+  salePrice     Int?
+  images        String[]         @default([]) // 간단 이미지 URL 배열(보조용)
+  description   String?
+  subcategory   String?          // ex. "jewelry" | "smallitem" | "other"
+  status        ProductStatus    @default(ACTIVE)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   // Relations
   productImages ProductImage[]      @relation("Product_ProductImages")
   variants      ProductVariant[]    @relation("Product_ProductVariants")
-  categories    ProductCategory[]   // M:N
-  reviews       Review[]
+  categories    ProductCategory[]   // M:N via join table model
+  reviews       Review[]            // Review 모델이 존재하면 연관
+  orderItems    OrderItem[]         @relation("ProductOrderItems")
 
-  // OrderItem과의 반대 관계 필드 추가 (필수)
-  orderItems OrderItem[]   @relation("ProductOrderItems")
+  @@index([status, createdAt])
+  @@index([slug])
 }
 
 model ProductImage {
@@ -115,17 +117,20 @@ model ProductCategory {
   @@index([productId])
 }
 
-// ==== Lookbook 모델 (단일 image -> images 배열로 확장) ====
+// Lookbook
 model Lookbook {
   id          String   @id @default(cuid())
   title       String
   caption     String?
   description String?
-  images      String[] @default([]) // 새로 추가: 다중 이미지 저장
+  images      String[] @default([]) // 다중 이미지 저장
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
 
+/**
+ * Order / OrderItem
+ */
 model Order {
   id          String      @id @default(cuid())
   status      OrderStatus @default(PENDING)
@@ -143,8 +148,8 @@ model Order {
   customerId  String? // optional: 주문에 고객이 연결되지 않을 수 있음
   customer    Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
-  items   OrderItem[]
-  payment  Payment? @relation(fields: [], references: [])
+  items    OrderItem[]
+  payments Payment[]     // 한 주문에 여러 결제 허용 (안정적)
 
   @@index([status, createdAt])
 }
@@ -166,6 +171,9 @@ model OrderItem {
   @@index([productId])
 }
 
+/**
+ * Inquiry
+ */
 model Inquiry {
   id        String   @id @default(cuid())
   name      String
@@ -179,9 +187,9 @@ model Inquiry {
   updatedAt DateTime @updatedAt
 }
 
-
-// ===== Customer / Cart / Payment / Review  =====
-
+/**
+ * ===== Customer / Cart / Payment / Review =====
+ */
 model Customer {
   id          String       @id @default(cuid())
   email       String       @unique
@@ -274,17 +282,17 @@ model Qna {
  * 결제 기록
  */
 model Payment {
-  id        String   @id @default(cuid())
-  orderId   String   // @unique 제거
-  order     Order    @relation(fields: [orderId], references: [id])
-  provider  String
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id])
+  provider   String
   providerInfo String?
-  amount    Int
-  currency  String   @default("KRW")
-  status    String   @default("completed")
-  txId      String?
-  raw       Json?
-  createdAt DateTime @default(now())
+  amount     Int
+  currency   String   @default("KRW")
+  status     String   @default("completed")
+  txId       String?
+  raw        Json?
+  createdAt  DateTime @default(now())
 
   @@index([orderId])
 }

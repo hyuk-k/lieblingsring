@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
 type CartItemPayload = {
-  id: string;     // product id
+  id: string; // product id
   qty: number;
 };
 
@@ -87,14 +87,24 @@ export async function POST(req: NextRequest) {
           items: {
             create: items.map((it) => {
               const info = priceMap.get(it.id)!;
+              const qtyValue = it.qty ?? 1;
+
+              // Prisma 스키마에 맞춰 relation connect 와 필수 필드 모두 채움
               return {
-                productId: it.id,
+                product: { connect: { id: it.id } }, // relation 연결
                 name: info.name,
                 price: info.price,
-                qty: it.qty,
+                // 스키마에 따라 필요한 필드 모두 채움(안전성)
+                quantity: qtyValue,
+                qty: qtyValue,
+                // variantId가 있다면 넣고, 없으면 undefined
+                variantId: (it as any).variantId ?? undefined,
               };
             }),
           },
+        },
+        include: {
+          items: true,
         },
       });
 

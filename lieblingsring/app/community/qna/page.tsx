@@ -1,18 +1,18 @@
+// app/community/qna/page.tsx
 import QnaCreateClient from './QnaCreateClient';
 import { prisma } from '@/lib/db';
+import type { Qna } from '@prisma/client';
 
-export const revalidate = 0; // 필요시 조절
+export const revalidate = 0; // 필요에 따라 조절
 
 export default async function QnaPage() {
-  // 서버에서 최신 Q&A 목록을 가져올 수 있음 (필요하면 사용)
-  let qnas = [];
+  let qnas: Qna[] = [];
   try {
     qnas = await prisma.qna.findMany({
       orderBy: { createdAt: 'desc' },
       take: 20,
     });
   } catch (e) {
-    // DB 에러여도 페이지 렌더링은 유지
     console.error('QnaPage prisma error', e);
   }
 
@@ -21,7 +21,7 @@ export default async function QnaPage() {
       <h1>Q&A</h1>
       <section style={{ marginBottom: 24 }}>
         <h2>질문 등록</h2>
-        <QnaCreateClient onCreated={() => { /* 필요시 목록 갱신 로직 추가 */ }} />
+        <QnaCreateClient onCreated={() => { /* 목록 갱신 로직 추가 가능 */ }} />
       </section>
 
       <section>
@@ -30,7 +30,7 @@ export default async function QnaPage() {
           {qnas.length === 0 ? (
             <li>질문이 없습니다.</li>
           ) : (
-            qnas.map((q: any) => (
+            qnas.map((q) => (
               <li key={q.id} style={{ marginBottom: 12 }}>
                 <strong>{q.title}</strong>
                 <div style={{ color: '#666', fontSize: 13 }}>{new Date(q.createdAt).toLocaleString()}</div>

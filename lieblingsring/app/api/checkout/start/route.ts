@@ -126,10 +126,11 @@ export async function POST(req: NextRequest) {
           payMethod: method,
           items: {
             create: cart.items.map((it) => ({
-              productId: it.id,
+              product: { connect: { id: it.id } },
               name: it.name,
               price: it.price,
-              qty: it.qty,
+              quantity: it.qty ?? it.quantity ?? 1,
+              variantId: it.variantId ?? undefined, 
             })),
           },
         },

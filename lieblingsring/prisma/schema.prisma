@@ -39,25 +39,25 @@ enum CouponType {
  * Product 관련 모델
  */
 model Product {
-  id            String           @id @default(cuid())
-  name          String
-  slug          String           @unique
-  summary       String?
-  price         Int
-  salePrice     Int?
-  images        String[]         @default([]) // 간단 이미지 URL 배열(보조용)
-  description   String?
-  subcategory   String?          // ex. "jewelry" | "smallitem" | "other"
-  status        ProductStatus    @default(ACTIVE)
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  summary     String?
+  price       Int
+  salePrice   Int?
+  images      String[]      @default([]) // 간단 이미지 URL 배열(보조용)
+  description String?
+  subcategory String? // ex. "jewelry" | "smallitem" | "other"
+  status      ProductStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   // Relations
-  productImages ProductImage[]      @relation("Product_ProductImages")
-  variants      ProductVariant[]    @relation("Product_ProductVariants")
-  categories    ProductCategory[]   // M:N via join table model
-  reviews       Review[]            // Review 모델이 존재하면 연관
-  orderItems    OrderItem[]         @relation("ProductOrderItems")
+  productImages ProductImage[]    @relation("Product_ProductImages")
+  variants      ProductVariant[]  @relation("Product_ProductVariants")
+  categories    ProductCategory[] // M:N via join table model
+  reviews       Review[] // Review 모델이 존재하면 연관
+  orderItems    OrderItem[]       @relation("ProductOrderItems")
 
   @@index([status, createdAt])
   @@index([slug])
@@ -79,9 +79,9 @@ model ProductVariant {
   id        String   @id @default(cuid())
   productId String
   title     String? // ex. "골드 + M 사이즈"
-  sku       String? @unique
-  price     Int?    // variant별 가격 오버라이드
-  stock     Int?    @default(0)
+  sku       String?  @unique
+  price     Int? // variant별 가격 오버라이드
+  stock     Int?     @default(0)
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -149,7 +149,7 @@ model Order {
   customer    Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   items    OrderItem[]
-  payments Payment[]     // 한 주문에 여러 결제 허용 (안정적)
+  payments Payment[] // 한 주문에 여러 결제 허용 (안정적)
 
   @@index([status, createdAt])
 }
@@ -163,8 +163,8 @@ model OrderItem {
   name      String
   price     Int
 
-  order     Order   @relation(fields: [orderId], references: [id])
-  product   Product @relation("ProductOrderItems", fields: [productId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation("ProductOrderItems", fields: [productId], references: [id])
 
   @@index([orderId])
   @@index([productId])
@@ -190,13 +190,13 @@ model Inquiry {
  * ===== Customer / Cart / Payment / Review =====
  */
 model Customer {
-  id          String       @id @default(cuid())
-  email       String       @unique
-  password    String
-  name        String?
-  phone       String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   addresses     Address[]
@@ -229,7 +229,7 @@ model Address {
 
 model Cart {
   id         String   @id @default(cuid())
-  customerId String?  // 익명(비회원) 장바구니도 가능하면 nullable
+  customerId String? // 익명(비회원) 장바구니도 가능하면 nullable
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -255,14 +255,14 @@ model CartItem {
 }
 
 model Announcement {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   title     String
-  content   String   @db.Text
-  authorId  String?  // 작성자가 optional일 수 있음
+  content   String    @db.Text
+  authorId  String? // 작성자가 optional일 수 있음
   author    Customer? @relation("AnnouncementAuthor", fields: [authorId], references: [id])
-  published Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  published Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model Qna {
@@ -281,17 +281,17 @@ model Qna {
  * 결제 기록
  */
 model Payment {
-  id         String   @id @default(cuid())
-  orderId    String
-  order      Order    @relation(fields: [orderId], references: [id])
-  provider   String
+  id           String   @id @default(cuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id])
+  provider     String
   providerInfo String?
-  amount     Int
-  currency   String   @default("KRW")
-  status     String   @default("completed")
-  txId       String?
-  raw        Json?
-  createdAt  DateTime @default(now())
+  amount       Int
+  currency     String   @default("KRW")
+  status       String   @default("completed")
+  txId         String?
+  raw          Json?
+  createdAt    DateTime @default(now())
 
   @@index([orderId])
 }
@@ -300,7 +300,7 @@ model Review {
   id         String   @id @default(cuid())
   productId  String
   customerId String?
-  rating     Int      // 1~5
+  rating     Int // 1~5
   title      String?
   content    String?
   createdAt  DateTime @default(now())
@@ -318,9 +318,9 @@ model Coupon {
   id        String     @id @default(cuid())
   code      String     @unique
   type      CouponType
-  value     Int        // 금액(원) 또는 비율(%) — type에 따라 해석
-  minAmount Int?       // 사용 조건 최소 결제액
-  maxUses   Int?       // 총 사용 횟수 제한
+  value     Int // 금액(원) 또는 비율(%) — type에 따라 해석
+  minAmount Int? // 사용 조건 최소 결제액
+  maxUses   Int? // 총 사용 횟수 제한
   usedCount Int        @default(0)
   validFrom DateTime?
   validTo   DateTime?
@@ -332,11 +332,12 @@ model Coupon {
  */
 model Point {
   id         String   @id @default(cuid())
-  customerId String
+  customerId String   @unique
   amount     Int      @default(0)
   updatedAt  DateTime @updatedAt
 
-  customer   Customer @relation("CustomerPoints", fields: [customerId], references: [id])
+  customer Customer @relation("CustomerPoints", fields: [customerId], references: [id])
+
   @@index([customerId])
 }
 

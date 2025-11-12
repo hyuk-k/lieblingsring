@@ -1,5 +1,5 @@
-// app/mypage/page.tsx (문제 부분 보완된 전체 예시)
-import QnaCreateClient from './QnaCreateClient';
+// app/mypage/page.tsx
+import QnaCreateClient from '../community/qna/QnaCreateClient';
 import { prisma } from '@/lib/db';
 import type { Qna } from '@prisma/client';
 

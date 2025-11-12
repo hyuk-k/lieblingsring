@@ -155,14 +155,13 @@ model Order {
 }
 
 model OrderItem {
-  id         String  @id @default(cuid())
-  orderId    String
-  productId  String
-  quantity   Int
-  variantId  String?
-  name       String
-  price      Int
-  qty        Int
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  variantId String?
+  name      String
+  price     Int
 
   order     Order   @relation(fields: [orderId], references: [id])
   product   Product @relation("ProductOrderItems", fields: [productId], references: [id])

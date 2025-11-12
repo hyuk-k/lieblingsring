@@ -58,7 +58,7 @@ model Product {
   reviews       Review[]
 
   // OrderItem과의 반대 관계 필드 추가 (필수)
-  orderItems    OrderItem[]         @relation("ProductOrderItems")
+  orderItems OrderItem[]   @relation("ProductOrderItems")
 }
 
 model ProductImage {
@@ -159,8 +159,8 @@ model OrderItem {
   price      Int
   qty        Int
 
-  order   Order   @relation(fields: [orderId], references: [id])
-  product Product @relation("ProductOrderItems", fields: [productId], references: [id])
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation("ProductOrderItems", fields: [productId], references: [id])
 
   @@index([orderId])
   @@index([productId])
@@ -275,7 +275,7 @@ model Qna {
  */
 model Payment {
   id        String   @id @default(cuid())
-  orderId   String   // <-- @unique 제거 (one-to-many)
+  orderId   String   // @unique 제거
   order     Order    @relation(fields: [orderId], references: [id])
   provider  String
   providerInfo String?

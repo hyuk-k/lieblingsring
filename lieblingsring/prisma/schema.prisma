@@ -269,18 +269,18 @@ model Qna {
  * 결제 기록
  */
 model Payment {
-  id        String   @id @default(cuid())
-  orderId   String   @unique
-  provider  String // "NAVERPAY", "TOSS", "STRIPE" 등
-  amount    Int
-  provider   String
-  currency  String   @default("KRW")
-  status     String   @default("completed")
-  txId      String?
-  raw       Json? // PG로부터 받은 전체 응답 저장(선택)
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  orderId      String   @unique
+  provider     String   // "NAVERPAY", "TOSS", "STRIPE" 등
+  providerInfo String?  // 추가 정보가 필요하면 이름을 이렇게 변경
+  amount       Int
+  currency     String   @default("KRW")
+  status       String   @default("completed")
+  txId         String?
+  raw          Json?
+  createdAt    DateTime @default(now())
 
-  order      Order    @relation(fields: [orderId], references: [id])
+  order        Order    @relation(fields: [orderId], references: [id])
 }
 
 /**

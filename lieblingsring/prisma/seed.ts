@@ -1,3 +1,4 @@
+// /wsl.localhost/Ubuntu-24.04/home/liebl/lieblingsring/lieblingsring/prisma/seed.ts
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();

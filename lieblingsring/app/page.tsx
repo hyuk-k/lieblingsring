@@ -52,7 +52,7 @@ export default function Home() {
                 fontWeight: 800,
               }}
             >
-              VOIR
+              당신을 특별하게 빛내줄 장신구
             </h1>
             <Link
               href="/shop"

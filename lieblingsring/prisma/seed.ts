@@ -1,4 +1,3 @@
-// prisma/seed.ts
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -24,6 +23,7 @@ async function main() {
         "/model-white-tee-key-necklace-smile-portrait.jpg",
         "/neckline-key-necklace-left-profile-extreme-closeup.jpg",
       ],
+      subcategory: "jewelry",
     },
     {
       name: "SILVER 생쪽매듭 목걸이",
@@ -34,6 +34,7 @@ async function main() {
         "/model-black-blouse-key-necklace-looking-up.jpg",
         "/model-white-tee-necklace-topknot-gesture.jpg",
       ],
+      subcategory: "jewelry",
     },
     {
       name: "SILVER 공, 실타래 목걸이",
@@ -44,6 +45,7 @@ async function main() {
         "/layered-necklaces-key-and-bead-close-chest.jpg",
         "/model-black-slip-wearing-earring-closeup.jpg",
       ],
+      subcategory: "jewelry",
     },
     {
       name: "SILVER 가지방석 열쇠 목걸이",
@@ -54,6 +56,7 @@ async function main() {
         "/model-black-slip-key-necklace-front-smile-hands-together.jpg",
         "/model-black-slip-key-necklace-front-crossed-arms.jpg",
       ],
+      subcategory: "jewelry",
     },
     {
       name: "알루미늄 반려동물 인식표",
@@ -61,6 +64,7 @@ async function main() {
       salePrice: null,
       summary: null,
       images: ["/mirror-smile-earring-necklace-closeup.jpg"],
+      subcategory: "other",
     },
     {
       name: "전통매듭 꽃다발 브로치",
@@ -68,6 +72,7 @@ async function main() {
       salePrice: null,
       summary: null,
       images: ["/model-black-blouse-holding-earring-vintage-wall.jpg"],
+      subcategory: "smallitem",
     },
     {
       name: "색동 휴대폰 스트랩",
@@ -75,6 +80,7 @@ async function main() {
       salePrice: null,
       summary: null,
       images: ["/earring-stud-closeup-right-ear.jpg"],
+      subcategory: "smallitem",
     },
     {
       name: "쏘맥 수세미 세트(소주+맥주)",
@@ -82,6 +88,7 @@ async function main() {
       salePrice: null,
       summary: null,
       images: ["/model-black-slip-sitting-bed-smile-wide.jpg"],
+      subcategory: "other",
     },
     {
       name: "김장 수세미 세트 (배추+당근+무)",
@@ -89,6 +96,7 @@ async function main() {
       salePrice: null,
       summary: null,
       images: ["/model-black-dress-stand-smile-vintage-hangers.jpg"],
+      subcategory: "other",
     },
   ];
 
@@ -104,6 +112,7 @@ async function main() {
           summary: it.summary ?? null,
           images: it.images,
           status: "ACTIVE",
+          subcategory: (it as any).subcategory ?? null,
           updatedAt: new Date(),
         },
         create: {
@@ -114,12 +123,12 @@ async function main() {
           summary: it.summary ?? null,
           images: it.images,
           status: "ACTIVE",
+          subcategory: (it as any).subcategory ?? null,
         },
       });
 
       console.log(`✔ Product upserted: ${it.name} (slug: ${slug})`);
     } catch (e: any) {
-      // 에러가 나면 로깅하고 다음 항목으로 진행
       console.error(`✖ Failed to upsert product: ${it.name} (slug: ${slug})`);
       console.error(e);
     }

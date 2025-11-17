@@ -37,7 +37,7 @@
     "@types/bcrypt": "^6.0.0",
     "@types/he": "^1.2.3",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^20",
+    "@types/node": "^20.19.25",
     "@types/nodemailer": "^7.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -45,7 +45,7 @@
     "eslint-config-next": "15.5.2",
     "prisma": "^6.17.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5"
+    "typescript": "^5.9.3"
   },
   "eslintConfig": {
     "extends": "next/core-web-vitals",
